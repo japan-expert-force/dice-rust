@@ -1,4 +1,4 @@
-use dice_rust::vm::StackVm;
+use dice_rust::stack_vm::StackVm;
 
 fn main() {
     let input = "2d100";
