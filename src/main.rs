@@ -1,16 +1,10 @@
-use dice_rust::analyzer::SemanticAnalyzer;
+use dice_rust::vm::StackVm;
 
 fn main() {
     let input = "2d100";
-    let mut analyzer = match SemanticAnalyzer::new(input) {
-        Ok(analyzer) => analyzer,
-        Err(e) => {
-            eprintln!("Error during semantic analysis: {:?}", e);
-            return;
-        }
-    };
-    match analyzer.analyze() {
-        Ok(ast) => println!("Semantic analysis successful! ast: {:?}", ast),
-        Err(e) => eprintln!("Semantic error: {:?}", e),
+    let mut stack_vm = StackVm::new();
+    match stack_vm.execute(&input) {
+        Ok(()) => (),
+        Err(e) => eprintln!("Error occurred: {}", e),
     }
 }

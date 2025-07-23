@@ -114,9 +114,18 @@ impl ParseError {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Error, Debug)]
 pub enum SemanticError {
+    #[error("Empty program")]
     EmptyProgram,
+    #[error("Dice count cannot be zero")]
     DiceCountZero,
+    #[error("Dice faces cannot be zero")]
     DiceFacesZero,
+}
+
+#[derive(Error, Debug)]
+pub enum RuntimeError {
+    #[error("Invalid stack state")]
+    InvalidStackState,
 }
