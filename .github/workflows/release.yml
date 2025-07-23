@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build and Release
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary_name: dice_rust.exe
+            archive_name: dice-rust-${{ github.ref_name }}-windows-x86_64.zip
+            archive_cmd: 7z a dice-rust-${{ github.ref_name }}-windows-x86_64.zip dice_rust.exe
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            binary_name: dice_rust
+            archive_name: dice-rust-${{ github.ref_name }}-macos-x86_64.tar.gz
+            archive_cmd: tar -czf dice-rust-${{ github.ref_name }}-macos-x86_64.tar.gz dice_rust
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            binary_name: dice_rust
+            archive_name: dice-rust-${{ github.ref_name }}-macos-aarch64.tar.gz
+            archive_cmd: tar -czf dice-rust-${{ github.ref_name }}-macos-aarch64.tar.gz dice_rust
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary_name: dice_rust
+            archive_name: dice-rust-${{ github.ref_name }}-linux-x86_64.tar.gz
+            archive_cmd: tar -czf dice-rust-${{ github.ref_name }}-linux-x86_64.tar.gz dice_rust
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare binary for packaging
+        shell: bash
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            cp target/${{ matrix.target }}/release/${{ matrix.binary_name }} .
+          else
+            cp target/${{ matrix.target }}/release/${{ matrix.binary_name }} .
+            chmod +x ${{ matrix.binary_name }}
+          fi
+
+      - name: Create archive
+        shell: bash
+        run: ${{ matrix.archive_cmd }}
+
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.archive_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          body: |
+            ## Installation
+
+            Download the appropriate binary for your platform:
+
+            - **Windows (x64)**: `dice-rust-${{ github.ref_name }}-windows-x86_64.zip`
+            - **macOS (Intel)**: `dice-rust-${{ github.ref_name }}-macos-x86_64.tar.gz`
+            - **macOS (Apple Silicon)**: `dice-rust-${{ github.ref_name }}-macos-aarch64.tar.gz`
+            - **Linux (x64)**: `dice-rust-${{ github.ref_name }}-linux-x86_64.tar.gz`
+
+            Extract the archive and run the binary directly:
+
+            ```bash
+            # Run with default expression (2d100)
+            ./dice_rust run
+
+            # Run with custom expression
+            ./dice_rust run "3d6"
+            ./dice_rust run "1d20"
+            ```
+
+            ## System Requirements
+
+            - No additional runtime dependencies required
+            - Supported platforms: Windows (x64), macOS (Intel/Apple Silicon), Linux (x64)
