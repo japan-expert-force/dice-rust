@@ -40,6 +40,12 @@ pub struct StackVm {
     rng: ThreadRng,
 }
 
+impl Default for StackVm {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StackVm {
     pub fn new() -> Self {
         Self {
@@ -49,14 +55,11 @@ impl StackVm {
     }
 
     pub fn execute(&mut self, source: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let bytecode = match Compiler::compile(source) {
-            Ok(bytecode) => bytecode,
-            Err(e) => return Err(e),
-        };
+        let bytecode = Compiler::compile(source)?;
         for instruction in bytecode {
             self.execute_instruction(&instruction)?;
         }
-        if self.stack.len() == 0 {
+        if self.stack.is_empty() {
             Ok(())
         } else {
             Err(Box::new(RuntimeError::InvalidStackState))
@@ -81,7 +84,7 @@ impl StackVm {
                     total += roll;
                 }
                 if count > 1 {
-                    eprintln!("Total: {}", total);
+                    eprintln!("Total: {total}");
                 }
             }
         };

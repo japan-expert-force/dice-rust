@@ -1,17 +1,20 @@
 # Dice Rust
 
-A Rust library and command-line tool for parsing dice notation expressions.
+A Rust library and command-line tool for parsing dice notation expressions with interpreter support.
 
 ## Overview
 
-Dice Rust is a parser for dice notation, commonly used in tabletop role-playing games. It can parse expressions like "2d6" (roll 2 six-sided dice) or "3d20" (roll 3 twenty-sided dice) and convert them into an Abstract Syntax Tree (AST) for further processing.
+Dice Rust is a comprehensive parser and execution environment for dice notation, commonly used in tabletop role-playing games. It can parse expressions like "2d6" (roll 2 six-sided dice) or "3d20" (roll 3 twenty-sided dice) and execute them on a stack-based virtual machine.
 
 ## Features
 
 - **Lexical Analysis**: Tokenizes dice notation strings into meaningful tokens
 - **Parsing**: Converts token streams into a structured AST
+- **Semantic Analysis**: Validates the AST for correctness
+- **Stack VM**: Interpret dice expressions on a virtual machine
 - **Error Handling**: Comprehensive error reporting with position information
 - **Type Safety**: Built with Rust's type system for reliability
+- **Pure Rust**: No external dependencies for core functionality
 
 ## Dice Notation Format
 
@@ -38,23 +41,42 @@ cargo build --release
 
 ## Usage
 
+Execute dice expressions using the built-in virtual machine:
+
 ```bash
-cargo run
+# Run with default expression (2d100)
+cargo run -- run
+
+# Run with custom expression
+cargo run -- run "3d6"
+cargo run -- run "1d20"
 ```
 
-This will parse the hardcoded expression "2d100" and display the resulting AST.
+### Examples
+
+```bash
+# Stack VM execution
+$ cargo run -- run "2d6"
+5
+2
+Total: 7
+```
 
 ## Project Structure
 
 ```
 src/
-├── main.rs     # Command-line interface
-├── lib.rs      # Library exports
-├── lexer.rs    # Tokenization logic
-├── parser.rs   # Parsing logic
-├── ast.rs      # Abstract Syntax Tree definitions
-└── error.rs    # Error handling
+├── analyzer.rs     # Semantic analysis
+├── ast.rs         # Abstract Syntax Tree definitions
+├── error.rs       # Error types and handling
+├── lexer.rs       # Lexical analysis
+├── lib.rs         # Library interface
+├── main.rs        # CLI interface
+├── parser.rs      # Syntax analysis
+└── stack_vm.rs    # Stack-based virtual machine
 ```
+
+````
 
 ## Architecture
 
@@ -96,11 +118,12 @@ Program {
         span: Span { /* position info */ }
     })
 }
-```
+````
 
 ## Dependencies
 
-- `rand = "0.9.2"` - For random number generation (future dice rolling functionality)
+- `clap = "4.0"` - For command-line argument parsing
+- `rand = "0.9.2"` - For random number generation in dice rolling
 - `thiserror = "2.0.12"` - For ergonomic error handling
 
 ## Development

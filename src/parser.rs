@@ -9,10 +9,7 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(source: &str) -> Result<Self, ParseError> {
-        let tokens = match Lexer::new(source).lex() {
-            Ok(tokens) => tokens,
-            Err(e) => return Err(e),
-        };
+        let tokens = Lexer::new(source).lex()?;
         Ok(Self { tokens, current: 0 })
     }
 

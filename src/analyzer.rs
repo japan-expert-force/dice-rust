@@ -8,14 +8,8 @@ pub struct SemanticAnalyzer {
 
 impl SemanticAnalyzer {
     pub fn new(source: &str) -> Result<Self, ParseError> {
-        let mut parser = match Parser::new(source) {
-            Ok(parser) => parser,
-            Err(e) => return Err(e),
-        };
-        let ast = match parser.parse() {
-            Ok(ast) => ast,
-            Err(e) => return Err(e),
-        };
+        let mut parser = Parser::new(source)?;
+        let ast = parser.parse()?;
         Ok(Self { ast })
     }
 
