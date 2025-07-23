@@ -1,4 +1,4 @@
-use crate::ast::*;
+use crate::ast::{BinaryOperator, Expression, Program, Statement};
 use crate::error::{ParseError, Position, Span};
 use crate::lexer::{Lexer, Token, TokenKind};
 
@@ -8,12 +8,12 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new(source: &str) -> Self {
+    pub fn new(source: &str) -> Result<Self, ParseError> {
         let tokens = match Lexer::new(source).lex() {
             Ok(tokens) => tokens,
-            Err(e) => panic!("Lexer error: {e}"),
+            Err(e) => return Err(e),
         };
-        Self { tokens, current: 0 }
+        Ok(Self { tokens, current: 0 })
     }
 
     fn current_token(&self) -> Token {

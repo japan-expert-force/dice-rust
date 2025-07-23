@@ -113,3 +113,10 @@ impl ParseError {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub enum SemanticError {
+    EmptyProgram,
+    DiceCountZero,
+    DiceFacesZero,
+}
