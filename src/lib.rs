@@ -1,10 +1,7 @@
 pub mod analyzer;
 pub mod ast;
 pub mod error;
-pub mod java_generator;
-pub mod jvm_bytecode;
-pub mod jvm_compatible_vm;
+pub mod jvm;
 pub mod lexer;
 pub mod parser;
 pub mod stack_vm;
-pub mod unified_jvm;

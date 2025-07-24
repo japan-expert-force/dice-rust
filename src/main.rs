@@ -1,11 +1,11 @@
 use clap::{Parser, Subcommand};
-use dice_rust::{jvm_compatible_vm::JvmCompatibleVm, stack_vm::StackVm, unified_jvm};
+use dice_rust::{jvm, stack_vm::StackVm};
 
 fn generate_and_execute_jvm_bytecode(expression: &str) -> Result<(), Box<dyn std::error::Error>> {
-    // 新しい統一されたJVMシステムを使用
-    let (instructions, constant_pool) = unified_jvm::generate_vm_instructions(expression)?;
+    // JVMクラス生成器から命令とプールを取得
+    let (instructions, constant_pool) = jvm::generate_vm_instructions(expression)?;
 
-    let mut vm = JvmCompatibleVm::new();
+    let mut vm = jvm::JvmCompatibleVm::new();
     vm.execute_method(instructions, constant_pool, 10)?;
 
     Ok(())
@@ -37,6 +37,10 @@ enum Commands {
         #[arg(short, long, default_value = "DiceRoll")]
         output: String,
     },
+    Execute {
+        #[arg(value_name = "CLASS_FILE")]
+        class_file: String,
+    },
 }
 
 fn main() {
@@ -59,8 +63,15 @@ fn main() {
             }
         }
         Commands::Java { expression, output } => {
-            if let Err(e) = unified_jvm::generate_java_class(&expression, &output) {
+            if let Err(e) = jvm::generate_java_class(&expression, &output) {
                 eprintln!("Java class generation error: {e}");
+            }
+        }
+        Commands::Execute { class_file } => {
+            let mut vm = jvm::JvmCompatibleVm::new();
+            match vm.execute_class_file(&class_file) {
+                Ok(_) => (),
+                Err(e) => eprintln!("JVM execution error: {e:?}"),
             }
         }
     }

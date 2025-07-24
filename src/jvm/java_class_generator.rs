@@ -1,138 +1,7 @@
-/// 統一されたJVMバイトコード生成・実行システム
-use std::collections::HashMap;
-use std::fs;
 use crate::analyzer::SemanticAnalyzer;
-
-/// JVMバイトコード命令
-#[derive(Debug, Clone)]
-pub enum JvmInstruction {
-    // 定数プール操作
-    Ldc(u16),    // Load constant from pool
-    IconstM1,    // Load -1
-    Iconst0,     // Load 0
-    Iconst1,     // Load 1
-    Iconst2,     // Load 2
-    Iconst3,     // Load 3
-    Iconst4,     // Load 4
-    Iconst5,     // Load 5
-    Bipush(i8),  // Push byte value
-    Sipush(i16), // Push short value
-
-    // スタック操作
-    Pop,         // Pop top value
-    Dup,         // Duplicate top value
-    Swap,        // Swap top two values
-
-    // 算術演算
-    Iadd,        // Add two ints
-    Isub,        // Subtract two ints
-    Imul,        // Multiply two ints
-    Idiv,        // Divide two ints
-    Irem,        // Remainder of two ints
-
-    // 浮動小数点演算
-    Dadd,        // Add two doubles
-    Dsub,        // Subtract two doubles
-    Dmul,        // Multiply two doubles
-    Ddiv,        // Divide two doubles
-
-    // 型変換
-    I2d,         // Convert int to double
-    D2i,         // Convert double to int
-
-    // 制御フロー
-    Ifeq(u16),   // Branch if int equals zero
-    Ifne(u16),   // Branch if int not equals zero
-    Iflt(u16),   // Branch if int less than zero
-    Ifge(u16),   // Branch if int greater or equal zero
-    Ifgt(u16),   // Branch if int greater than zero
-    Ifle(u16),   // Branch if int less or equal zero
-    Goto(u16),   // Unconditional branch
-
-    // メソッド呼び出し
-    Invokevirtual(u16),   // Invoke virtual method
-    Invokestatic(u16),    // Invoke static method
-
-    // リターン
-    Return,      // Return void
-    Ireturn,     // Return int
-
-    // フィールドアクセス
-    Getstatic(u16), // Get static field
-
-    // 定数
-    Dconst0,    // Push double 0.0
-    Dconst1,    // Push double 1.0
-}
-
-/// 定数プールエントリ
-#[derive(Debug, Clone)]
-pub enum ConstantPoolEntry {
-    Utf8(String),
-    Class(u16),
-    String(u16),
-    Fieldref(u16, u16),
-    Methodref(u16, u16),
-    NameAndType(u16, u16),
-    Integer(i32),
-    Float(f32),
-    Long(i64),
-    Double(f64),
-}
-
-/// 定数プール
-#[derive(Debug, Clone)]
-pub struct ConstantPool {
-    entries: Vec<ConstantPoolEntry>,
-}
-
-impl ConstantPool {
-    pub fn new() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
-    }
-
-    pub fn add_utf8(&mut self, value: String) -> u16 {
-        let index = self.entries.len();
-        self.entries.push(ConstantPoolEntry::Utf8(value));
-        index as u16 + 1
-    }
-
-    pub fn add_class(&mut self, name_index: u16) -> u16 {
-        let index = self.entries.len();
-        self.entries.push(ConstantPoolEntry::Class(name_index));
-        index as u16 + 1
-    }
-
-    pub fn add_string(&mut self, utf8_index: u16) -> u16 {
-        let index = self.entries.len();
-        self.entries.push(ConstantPoolEntry::String(utf8_index));
-        index as u16 + 1
-    }
-
-    pub fn add_fieldref(&mut self, class_index: u16, name_and_type_index: u16) -> u16 {
-        let index = self.entries.len();
-        self.entries.push(ConstantPoolEntry::Fieldref(class_index, name_and_type_index));
-        index as u16 + 1
-    }
-
-    pub fn add_methodref(&mut self, class_index: u16, name_and_type_index: u16) -> u16 {
-        let index = self.entries.len();
-        self.entries.push(ConstantPoolEntry::Methodref(class_index, name_and_type_index));
-        index as u16 + 1
-    }
-
-    pub fn add_name_and_type(&mut self, name_index: u16, descriptor_index: u16) -> u16 {
-        let index = self.entries.len();
-        self.entries.push(ConstantPoolEntry::NameAndType(name_index, descriptor_index));
-        index as u16 + 1
-    }
-
-    pub fn entries(&self) -> &Vec<ConstantPoolEntry> {
-        &self.entries
-    }
-}
+use super::jvm_types::{ConstantPool, ConstantPoolEntry, JvmInstruction};
+/// Javaクラスファイル生成器
+use std::fs;
 
 /// 完全なJavaクラスファイル生成器
 pub struct JavaClassGenerator {
@@ -149,7 +18,10 @@ impl JavaClassGenerator {
     }
 
     /// Dice式からJavaクラスファイルを生成
-    pub fn generate_dice_class(&mut self, expression: &str) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    pub fn generate_dice_class(
+        &mut self,
+        expression: &str,
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         // AST解析
         let mut analyzer = SemanticAnalyzer::new(expression)?;
         let ast = analyzer.analyze()?;
@@ -167,7 +39,10 @@ impl JavaClassGenerator {
     }
 
     /// Dice式からJVM命令シーケンスを生成（VM実行用）
-    pub fn generate_dice_instructions(&mut self, expression: &str) -> Result<Vec<JvmInstruction>, Box<dyn std::error::Error>> {
+    pub fn generate_dice_instructions(
+        &mut self,
+        expression: &str,
+    ) -> Result<Vec<JvmInstruction>, Box<dyn std::error::Error>> {
         let mut analyzer = SemanticAnalyzer::new(expression)?;
         let ast = analyzer.analyze()?;
 
@@ -190,7 +65,8 @@ impl JavaClassGenerator {
         // 3: UTF8 - "main"
         self.constant_pool.add_utf8("main".to_string());
         // 4: UTF8 - "([Ljava/lang/String;)V"
-        self.constant_pool.add_utf8("([Ljava/lang/String;)V".to_string());
+        self.constant_pool
+            .add_utf8("([Ljava/lang/String;)V".to_string());
         // 5: UTF8 - "Code"
         self.constant_pool.add_utf8("Code".to_string());
         // 6: UTF8 - "java/lang/System"
@@ -200,9 +76,11 @@ impl JavaClassGenerator {
         // 8: UTF8 - "err"
         self.constant_pool.add_utf8("err".to_string());
         // 9: UTF8 - "Ljava/io/PrintStream;"
-        self.constant_pool.add_utf8("Ljava/io/PrintStream;".to_string());
+        self.constant_pool
+            .add_utf8("Ljava/io/PrintStream;".to_string());
         // 10: UTF8 - "java/io/PrintStream"
-        self.constant_pool.add_utf8("java/io/PrintStream".to_string());
+        self.constant_pool
+            .add_utf8("java/io/PrintStream".to_string());
         // 11: UTF8 - "println"
         self.constant_pool.add_utf8("println".to_string());
         // 12: UTF8 - "(I)V"
@@ -218,7 +96,8 @@ impl JavaClassGenerator {
         // 17: UTF8 - "print"
         self.constant_pool.add_utf8("print".to_string());
         // 18: UTF8 - "(Ljava/lang/String;)V"
-        self.constant_pool.add_utf8("(Ljava/lang/String;)V".to_string());
+        self.constant_pool
+            .add_utf8("(Ljava/lang/String;)V".to_string());
 
         // Classes
         // 19: Class - this class
@@ -264,7 +143,11 @@ impl JavaClassGenerator {
     }
 
     /// Dice用のバイトコードを生成
-    fn generate_dice_bytecode(&self, count: u32, faces: u32) -> Result<Vec<JvmInstruction>, Box<dyn std::error::Error>> {
+    fn generate_dice_bytecode(
+        &self,
+        count: u32,
+        faces: u32,
+    ) -> Result<Vec<JvmInstruction>, Box<dyn std::error::Error>> {
         let mut instructions = Vec::new();
 
         if count == 1 {
@@ -296,7 +179,12 @@ impl JavaClassGenerator {
     }
 
     /// 複数ダイスのバイトコード生成
-    fn generate_multiple_dice(&self, instructions: &mut Vec<JvmInstruction>, count: u32, faces: u32) {
+    fn generate_multiple_dice(
+        &self,
+        instructions: &mut Vec<JvmInstruction>,
+        count: u32,
+        faces: u32,
+    ) {
         instructions.push(JvmInstruction::Iconst0); // total = 0
 
         // 各ダイスを振る
@@ -331,6 +219,7 @@ impl JavaClassGenerator {
         instructions.push(JvmInstruction::Getstatic(32)); // System.err
         instructions.push(JvmInstruction::Swap);
         instructions.push(JvmInstruction::Invokevirtual(33)); // println(I)V
+        instructions.push(JvmInstruction::Pop); // スタックから残った値を削除
     }
 
     /// double定数をスタックにプッシュ
@@ -371,12 +260,15 @@ impl JavaClassGenerator {
     }
 
     /// Javaクラスファイルを生成
-    fn generate_class_file(&self, bytecode_instructions: Vec<JvmInstruction>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    fn generate_class_file(
+        &self,
+        bytecode_instructions: Vec<JvmInstruction>,
+    ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         let mut bytes = Vec::new();
 
         // Magic number
         bytes.extend_from_slice(&0xCAFEBABEu32.to_be_bytes());
-        
+
         // Version (Java 8 = 52)
         bytes.extend_from_slice(&0u16.to_be_bytes()); // Minor version
         bytes.extend_from_slice(&52u16.to_be_bytes()); // Major version
@@ -470,23 +362,23 @@ impl JavaClassGenerator {
     fn write_main_method(&self, bytes: &mut Vec<u8>, instructions: Vec<JvmInstruction>) {
         // Access flags (public static)
         bytes.extend_from_slice(&0x0009u16.to_be_bytes());
-        
+
         // Name index (3 = "main")
         bytes.extend_from_slice(&3u16.to_be_bytes());
-        
+
         // Descriptor index (4 = "([Ljava/lang/String;)V")
         bytes.extend_from_slice(&4u16.to_be_bytes());
-        
+
         // Attributes count
         bytes.extend_from_slice(&1u16.to_be_bytes());
-        
+
         // Code attribute index (5 = "Code")
         bytes.extend_from_slice(&5u16.to_be_bytes());
-        
+
         // Code attribute
         let code_bytes = self.instructions_to_bytes(instructions);
         let attribute_length = code_bytes.len() as u32 + 12;
-        
+
         bytes.extend_from_slice(&attribute_length.to_be_bytes());
         bytes.extend_from_slice(&5u16.to_be_bytes()); // max_stack
         bytes.extend_from_slice(&2u16.to_be_bytes()); // max_locals
@@ -499,7 +391,7 @@ impl JavaClassGenerator {
     /// JVM命令をバイト配列に変換
     fn instructions_to_bytes(&self, instructions: Vec<JvmInstruction>) -> Vec<u8> {
         let mut bytes = Vec::new();
-        
+
         for instruction in instructions {
             match instruction {
                 JvmInstruction::Iconst0 => bytes.push(0x03),
@@ -522,6 +414,7 @@ impl JavaClassGenerator {
                     bytes.push(index as u8);
                 }
                 JvmInstruction::Dup => bytes.push(0x59),
+                JvmInstruction::Pop => bytes.push(0x57),
                 JvmInstruction::Swap => bytes.push(0x5F),
                 JvmInstruction::Iadd => bytes.push(0x60),
                 JvmInstruction::Isub => bytes.push(0x64),
@@ -556,29 +449,38 @@ impl JavaClassGenerator {
                 }
             }
         }
-        
+
         bytes
+    }
+
+    pub fn constant_pool(&self) -> &ConstantPool {
+        &self.constant_pool
     }
 }
 
-/// 統一されたJVMシステム - Java class file生成とVM実行の両方をサポート
-pub fn generate_java_class(expression: &str, class_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+/// 統一されたJVMシステム - Java class file生成
+pub fn generate_java_class(
+    expression: &str,
+    class_name: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut generator = JavaClassGenerator::new(class_name.to_string());
     let class_bytes = generator.generate_dice_class(expression)?;
     let filename = format!("{}.class", class_name);
     fs::write(&filename, &class_bytes)?;
-    
+
     println!("Generated: {}", filename);
     println!("Run with: java {}", class_name);
     println!("View bytecode with: javap -c {}.class", class_name);
-    
+
     Ok(())
 }
 
 /// VM実行用のJVM命令を生成
-pub fn generate_vm_instructions(expression: &str) -> Result<(Vec<JvmInstruction>, ConstantPool), Box<dyn std::error::Error>> {
+pub fn generate_vm_instructions(
+    expression: &str,
+) -> Result<(Vec<JvmInstruction>, ConstantPool), Box<dyn std::error::Error>> {
     let mut generator = JavaClassGenerator::new("DiceRoll".to_string());
     generator.setup_constant_pool();
     let instructions = generator.generate_dice_instructions(expression)?;
-    Ok((instructions, generator.constant_pool))
+    Ok((instructions, generator.constant_pool.clone()))
 }

@@ -1,6 +1,8 @@
+use super::class_file_parser::ClassFileParser;
 use crate::error::RuntimeError;
-use crate::unified_jvm::{ConstantPool, ConstantPoolEntry, JvmInstruction};
+use super::jvm_types::{ConstantPool, ConstantPoolEntry, JvmInstruction};
 use std::collections::HashMap;
+use std::fs;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum JvmValue {
@@ -10,6 +12,15 @@ pub enum JvmValue {
     Double(f64),
     Reference(Option<usize>),
     ReturnAddress(usize),
+}
+
+#[derive(Debug, Clone)]
+enum ResolvedMethod {
+    PrintStreamPrintln,       // println(I)V
+    PrintStreamPrint,         // print(Ljava/lang/String;)V
+    PrintStreamPrintlnString, // println(Ljava/lang/String;)V
+    MathRandom,               // Math.random()D
+    Unknown,
 }
 
 impl JvmValue {
@@ -46,6 +57,7 @@ pub struct MethodFrame {
 pub struct JvmCompatibleVm {
     frames: Vec<MethodFrame>,
     heap: HashMap<usize, JvmObject>,
+    string_data: HashMap<usize, String>,
     next_object_id: usize,
     max_steps: usize,
     steps: usize,
@@ -62,6 +74,7 @@ impl JvmCompatibleVm {
         Self {
             frames: Vec::new(),
             heap: HashMap::new(),
+            string_data: HashMap::new(),
             next_object_id: 1,
             max_steps: 100_000,
             steps: 0,
@@ -81,6 +94,9 @@ impl JvmCompatibleVm {
         };
 
         self.heap.insert(object_id, string_object);
+        // Store the actual string value
+        self.string_data.insert(object_id, value);
+
         object_id
     }
 
@@ -115,6 +131,25 @@ impl JvmCompatibleVm {
         }
 
         Ok(None)
+    }
+
+    /// Execute a Java class file (.class) by parsing it and running the main method
+    pub fn execute_class_file(
+        &mut self,
+        class_file_path: &str,
+    ) -> Result<Option<JvmValue>, RuntimeError> {
+        // Read the class file
+        let class_data = fs::read(class_file_path).map_err(|_| RuntimeError::InvalidStackState)?;
+
+        // Parse the class file
+        let class_file = ClassFileParser::parse(&class_data)?;
+
+        // Execute the main method
+        self.execute_method(
+            class_file.main_method_bytecode,
+            class_file.constant_pool,
+            class_file.max_locals,
+        )
     }
 
     fn execute_single_instruction(&mut self) -> Result<Option<JvmValue>, RuntimeError> {
@@ -506,21 +541,98 @@ impl JvmCompatibleVm {
         Ok(None)
     }
 
+    fn resolve_method_reference(&self, method_ref: u16) -> Result<ResolvedMethod, RuntimeError> {
+        let frame = self.frames.last().ok_or(RuntimeError::CallStackUnderflow)?;
+        let entries = frame.constant_pool.entries();
+
+        // JVM constant pool is 1-based, but our array is 0-based
+        let actual_index = (method_ref - 1) as usize;
+        if actual_index >= entries.len() {
+            return Ok(ResolvedMethod::Unknown);
+        }
+
+        match &entries[actual_index] {
+            ConstantPoolEntry::Methodref(class_index, name_and_type_index) => {
+                // Get class name
+                let class_actual_index = (*class_index - 1) as usize;
+                let class_name =
+                    if let ConstantPoolEntry::Class(name_index) = &entries[class_actual_index] {
+                        let name_actual_index = (*name_index - 1) as usize;
+                        if let ConstantPoolEntry::Utf8(name) = &entries[name_actual_index] {
+                            name
+                        } else {
+                            return Ok(ResolvedMethod::Unknown);
+                        }
+                    } else {
+                        return Ok(ResolvedMethod::Unknown);
+                    };
+
+                // Get method name and descriptor
+                let name_and_type_actual_index = (*name_and_type_index - 1) as usize;
+                let (method_name, descriptor) =
+                    if let ConstantPoolEntry::NameAndType(name_index, desc_index) =
+                        &entries[name_and_type_actual_index]
+                    {
+                        let name_actual_index = (*name_index - 1) as usize;
+                        let desc_actual_index = (*desc_index - 1) as usize;
+                        let name =
+                            if let ConstantPoolEntry::Utf8(name) = &entries[name_actual_index] {
+                                name
+                            } else {
+                                return Ok(ResolvedMethod::Unknown);
+                            };
+                        let desc =
+                            if let ConstantPoolEntry::Utf8(desc) = &entries[desc_actual_index] {
+                                desc
+                            } else {
+                                return Ok(ResolvedMethod::Unknown);
+                            };
+                        (name, desc)
+                    } else {
+                        return Ok(ResolvedMethod::Unknown);
+                    };
+
+                // Resolve based on class, method name, and descriptor
+                match (
+                    class_name.as_str(),
+                    method_name.as_str(),
+                    descriptor.as_str(),
+                ) {
+                    ("java/io/PrintStream", "println", "(I)V") => {
+                        Ok(ResolvedMethod::PrintStreamPrintln)
+                    }
+                    ("java/io/PrintStream", "print", "(Ljava/lang/String;)V") => {
+                        Ok(ResolvedMethod::PrintStreamPrint)
+                    }
+                    ("java/io/PrintStream", "println", "(Ljava/lang/String;)V") => {
+                        Ok(ResolvedMethod::PrintStreamPrintlnString)
+                    }
+                    ("java/lang/Math", "random", "()D") => Ok(ResolvedMethod::MathRandom),
+                    _ => Ok(ResolvedMethod::Unknown),
+                }
+            }
+            _ => Ok(ResolvedMethod::Unknown),
+        }
+    }
+
     fn load_constant_from_pool(&mut self, index: u16) -> Result<JvmValue, RuntimeError> {
         let frame = self.frames.last().ok_or(RuntimeError::CallStackUnderflow)?;
         let entries = frame.constant_pool.entries();
 
-        if index as usize >= entries.len() {
+        // JVM constant pool is 1-based, but our array is 0-based
+        let actual_index = (index - 1) as usize;
+        if actual_index >= entries.len() {
             return Err(RuntimeError::InvalidStackState);
         }
 
-        match &entries[index as usize] {
+        match &entries[actual_index] {
             ConstantPoolEntry::Integer(i) => Ok(JvmValue::Int(*i)),
             ConstantPoolEntry::Float(f) => Ok(JvmValue::Float(*f)),
             ConstantPoolEntry::Long(l) => Ok(JvmValue::Long(*l)),
             ConstantPoolEntry::Double(d) => Ok(JvmValue::Double(*d)),
             ConstantPoolEntry::String(utf8_index) => {
-                if let ConstantPoolEntry::Utf8(s) = &entries[*utf8_index as usize] {
+                let utf8_actual_index = (*utf8_index - 1) as usize;
+                if let ConstantPoolEntry::Utf8(s) = &entries[utf8_actual_index] {
                     let object_id = self.create_string_object(s.clone());
                     Ok(JvmValue::Reference(Some(object_id)))
                 } else {
@@ -548,7 +660,66 @@ impl JvmCompatibleVm {
     }
 
     fn resolve_static_field(&mut self, field_ref: u16) -> Result<JvmValue, RuntimeError> {
-        // For demo purposes, assume field_ref 31 = System.out, 32 = System.err
+        let frame = self.frames.last().ok_or(RuntimeError::CallStackUnderflow)?;
+        let entries = frame.constant_pool.entries();
+
+        // JVM constant pool is 1-based, but our array is 0-based
+        let actual_index = (field_ref - 1) as usize;
+        if actual_index >= entries.len() {
+            // Fallback to old numeric resolution
+            return self.resolve_static_field_numeric(field_ref);
+        }
+
+        match &entries[actual_index] {
+            ConstantPoolEntry::Fieldref(class_index, name_and_type_index) => {
+                // Get class name
+                let class_actual_index = (*class_index - 1) as usize;
+                let class_name =
+                    if let ConstantPoolEntry::Class(name_index) = &entries[class_actual_index] {
+                        let name_actual_index = (*name_index - 1) as usize;
+                        if let ConstantPoolEntry::Utf8(name) = &entries[name_actual_index] {
+                            name
+                        } else {
+                            return self.resolve_static_field_numeric(field_ref);
+                        }
+                    } else {
+                        return self.resolve_static_field_numeric(field_ref);
+                    };
+
+                // Get field name
+                let name_and_type_actual_index = (*name_and_type_index - 1) as usize;
+                let field_name = if let ConstantPoolEntry::NameAndType(name_index, _desc_index) =
+                    &entries[name_and_type_actual_index]
+                {
+                    let name_actual_index = (*name_index - 1) as usize;
+                    if let ConstantPoolEntry::Utf8(name) = &entries[name_actual_index] {
+                        name
+                    } else {
+                        return self.resolve_static_field_numeric(field_ref);
+                    }
+                } else {
+                    return self.resolve_static_field_numeric(field_ref);
+                };
+
+                // Resolve based on class and field name
+                match (class_name.as_str(), field_name.as_str()) {
+                    ("java/lang/System", "out") => {
+                        let stdout_id = self.create_printstream_object("stdout".to_string());
+                        Ok(JvmValue::Reference(Some(stdout_id)))
+                    }
+                    ("java/lang/System", "err") => {
+                        let stderr_id = self.create_printstream_object("stderr".to_string());
+                        Ok(JvmValue::Reference(Some(stderr_id)))
+                    }
+                    _ => self.resolve_static_field_numeric(field_ref),
+                }
+            }
+            _ => self.resolve_static_field_numeric(field_ref),
+        }
+    }
+
+    fn resolve_static_field_numeric(&mut self, field_ref: u16) -> Result<JvmValue, RuntimeError> {
+        // Fallback for numeric field references (for backward compatibility)
         match field_ref {
             31 => {
                 // System.out - create a PrintStream object reference
@@ -597,13 +768,16 @@ impl JvmCompatibleVm {
     }
 
     fn invoke_virtual_method(&mut self, method_ref: u16) -> Result<(), RuntimeError> {
+        // First try to resolve the method from the constant pool
+        let method_info = self.resolve_method_reference(method_ref)?;
+
         let frame = self
             .frames
             .last_mut()
             .ok_or(RuntimeError::CallStackUnderflow)?;
 
-        match method_ref {
-            33 => {
+        match method_info {
+            ResolvedMethod::PrintStreamPrintln => {
                 // println(I)V
                 let value = frame
                     .operand_stack
@@ -627,7 +801,7 @@ impl JvmCompatibleVm {
                     }
                 }
             }
-            34 => {
+            ResolvedMethod::PrintStreamPrint => {
                 // print(Ljava/lang/String;)V
                 let string_ref = frame
                     .operand_stack
@@ -639,48 +813,195 @@ impl JvmCompatibleVm {
                     .ok_or(RuntimeError::StackUnderflow)?;
 
                 if let (
-                    JvmValue::Reference(Some(_string_id)),
+                    JvmValue::Reference(Some(string_id)),
                     JvmValue::Reference(Some(stream_id)),
                 ) = (string_ref, printstream_ref)
                 {
-                    // Get the string from constant pool or heap
-                    if method_ref == 34 {
-                        // Assuming this is "Total: " string
+                    // Get the actual string value from our string data storage
+                    if let Some(string_value) = self.string_data.get(&string_id) {
                         if let Some(stream_obj) = self.heap.get(&stream_id) {
                             if let Some(JvmValue::Int(is_stderr)) =
                                 stream_obj.fields.get("is_stderr")
                             {
                                 if *is_stderr == 1 {
-                                    eprint!("Total: ");
+                                    eprint!("{}", string_value);
                                 } else {
-                                    print!("Total: ");
+                                    print!("{}", string_value);
                                 }
                             }
                         }
                     }
                 }
             }
-            _ => return Err(RuntimeError::InvalidStackState),
+            ResolvedMethod::PrintStreamPrintlnString => {
+                // println(Ljava/lang/String;)V
+                let string_ref = frame
+                    .operand_stack
+                    .pop()
+                    .ok_or(RuntimeError::StackUnderflow)?;
+                let printstream_ref = frame
+                    .operand_stack
+                    .pop()
+                    .ok_or(RuntimeError::StackUnderflow)?;
+
+                if let (
+                    JvmValue::Reference(Some(string_id)),
+                    JvmValue::Reference(Some(stream_id)),
+                ) = (string_ref, printstream_ref)
+                {
+                    // Get the actual string value from our string data storage
+                    if let Some(string_value) = self.string_data.get(&string_id) {
+                        if let Some(stream_obj) = self.heap.get(&stream_id) {
+                            if let Some(JvmValue::Int(is_stderr)) =
+                                stream_obj.fields.get("is_stderr")
+                            {
+                                if *is_stderr == 1 {
+                                    eprintln!("{}", string_value);
+                                } else {
+                                    println!("{}", string_value);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            ResolvedMethod::MathRandom => {
+                // Math.random()D - This shouldn't be called in invoke_virtual_method
+                // but we need to handle it for completeness
+                return Err(RuntimeError::InvalidStackState);
+            }
+            ResolvedMethod::Unknown => {
+                // Fallback for unknown methods - attempt old numeric resolution
+                match method_ref {
+                    33 => {
+                        // println(I)V
+                        let value = frame
+                            .operand_stack
+                            .pop()
+                            .ok_or(RuntimeError::StackUnderflow)?
+                            .as_int()?;
+                        let printstream_ref = frame
+                            .operand_stack
+                            .pop()
+                            .ok_or(RuntimeError::StackUnderflow)?;
+
+                        if let JvmValue::Reference(Some(obj_id)) = printstream_ref {
+                            if let Some(obj) = self.heap.get(&obj_id) {
+                                if let Some(JvmValue::Int(is_stderr)) = obj.fields.get("is_stderr")
+                                {
+                                    if *is_stderr == 1 {
+                                        eprintln!("{}", value);
+                                    } else {
+                                        println!("{}", value);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    34 => {
+                        // print(Ljava/lang/String;)V
+                        let string_ref = frame
+                            .operand_stack
+                            .pop()
+                            .ok_or(RuntimeError::StackUnderflow)?;
+                        let printstream_ref = frame
+                            .operand_stack
+                            .pop()
+                            .ok_or(RuntimeError::StackUnderflow)?;
+
+                        if let (
+                            JvmValue::Reference(Some(string_id)),
+                            JvmValue::Reference(Some(stream_id)),
+                        ) = (string_ref, printstream_ref)
+                        {
+                            if let Some(string_value) = self.string_data.get(&string_id) {
+                                if let Some(stream_obj) = self.heap.get(&stream_id) {
+                                    if let Some(JvmValue::Int(is_stderr)) =
+                                        stream_obj.fields.get("is_stderr")
+                                    {
+                                        if *is_stderr == 1 {
+                                            eprint!("{}", string_value);
+                                        } else {
+                                            print!("{}", string_value);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    35 => {
+                        // println(Ljava/lang/String;)V
+                        let string_ref = frame
+                            .operand_stack
+                            .pop()
+                            .ok_or(RuntimeError::StackUnderflow)?;
+                        let printstream_ref = frame
+                            .operand_stack
+                            .pop()
+                            .ok_or(RuntimeError::StackUnderflow)?;
+
+                        if let (
+                            JvmValue::Reference(Some(string_id)),
+                            JvmValue::Reference(Some(stream_id)),
+                        ) = (string_ref, printstream_ref)
+                        {
+                            if let Some(string_value) = self.string_data.get(&string_id) {
+                                if let Some(stream_obj) = self.heap.get(&stream_id) {
+                                    if let Some(JvmValue::Int(is_stderr)) =
+                                        stream_obj.fields.get("is_stderr")
+                                    {
+                                        if *is_stderr == 1 {
+                                            eprintln!("{}", string_value);
+                                        } else {
+                                            println!("{}", string_value);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => return Err(RuntimeError::InvalidStackState),
+                }
+            }
         }
 
         Ok(())
     }
 
     fn invoke_static_method(&mut self, method_ref: u16) -> Result<(), RuntimeError> {
+        // First try to resolve the method from the constant pool
+        let method_info = self.resolve_method_reference(method_ref)?;
+
         let frame = self
             .frames
             .last_mut()
             .ok_or(RuntimeError::CallStackUnderflow)?;
 
-        match method_ref {
-            35 => {
+        match method_info {
+            ResolvedMethod::MathRandom => {
                 // Math.random()D
                 use rand::Rng;
                 let mut rng = rand::rng();
                 let random_value = rng.random::<f64>();
                 frame.operand_stack.push(JvmValue::Double(random_value));
             }
-            _ => return Err(RuntimeError::InvalidStackState),
+            ResolvedMethod::Unknown => {
+                // Fallback for unknown methods - attempt old numeric resolution
+                match method_ref {
+                    36 => {
+                        // Math.random()D
+                        use rand::Rng;
+                        let mut rng = rand::rng();
+                        let random_value = rng.random::<f64>();
+                        frame.operand_stack.push(JvmValue::Double(random_value));
+                    }
+                    _ => return Err(RuntimeError::InvalidStackState),
+                }
+            }
+            _ => {
+                // Other resolved methods shouldn't be called via invokestatic
+                return Err(RuntimeError::InvalidStackState);
+            }
         }
 
         Ok(())
@@ -696,6 +1017,7 @@ impl Default for JvmCompatibleVm {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_simple_arithmetic() {
         let mut vm = JvmCompatibleVm::new();
@@ -728,5 +1050,73 @@ mod tests {
         let result = vm.execute_method(bytecode, constant_pool, 0).unwrap();
 
         assert_eq!(result, Some(JvmValue::Int(1)));
+    }
+
+    #[test]
+    fn test_jvm_compatible_hello_world() {
+        let mut vm = JvmCompatibleVm::new();
+        let mut constant_pool = ConstantPool::new();
+
+        // Set up constant pool for proper JVM-compatible Hello World
+        let hello_utf8 = constant_pool.add_utf8("Hello, World!".to_string());
+        let hello_string = constant_pool.add_string(hello_utf8);
+
+        let system_utf8 = constant_pool.add_utf8("java/lang/System".to_string());
+        let system_class = constant_pool.add_class(system_utf8);
+
+        let out_utf8 = constant_pool.add_utf8("out".to_string());
+        let printstream_desc_utf8 = constant_pool.add_utf8("Ljava/io/PrintStream;".to_string());
+        let out_name_and_type = constant_pool.add_name_and_type(out_utf8, printstream_desc_utf8);
+        let system_out_field = constant_pool.add_fieldref(system_class, out_name_and_type);
+
+        let printstream_utf8 = constant_pool.add_utf8("java/io/PrintStream".to_string());
+        let printstream_class = constant_pool.add_class(printstream_utf8);
+
+        let println_utf8 = constant_pool.add_utf8("println".to_string());
+        let println_desc_utf8 = constant_pool.add_utf8("(Ljava/lang/String;)V".to_string());
+        let println_name_and_type =
+            constant_pool.add_name_and_type(println_utf8, println_desc_utf8);
+        let println_method = constant_pool.add_methodref(printstream_class, println_name_and_type);
+
+        let bytecode = vec![
+            JvmInstruction::Getstatic(system_out_field), // Get System.out
+            JvmInstruction::Ldc(hello_string),           // Load "Hello, World!" string
+            JvmInstruction::Invokevirtual(println_method), // Call println
+            JvmInstruction::Return,                      // Return
+        ];
+
+        // This should execute without errors and print "Hello, World!"
+        let result = vm.execute_method(bytecode, constant_pool, 0);
+        match &result {
+            Ok(_) => {}
+            Err(e) => eprintln!("Error: {:?}", e),
+        }
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_math_random_compatibility() {
+        let mut vm = JvmCompatibleVm::new();
+        let mut constant_pool = ConstantPool::new();
+
+        // Set up constant pool for Math.random()
+        let math_utf8 = constant_pool.add_utf8("java/lang/Math".to_string());
+        let math_class = constant_pool.add_class(math_utf8);
+
+        let random_utf8 = constant_pool.add_utf8("random".to_string());
+        let random_desc_utf8 = constant_pool.add_utf8("()D".to_string());
+        let random_name_and_type = constant_pool.add_name_and_type(random_utf8, random_desc_utf8);
+        let random_method = constant_pool.add_methodref(math_class, random_name_and_type);
+
+        let bytecode = vec![
+            JvmInstruction::Invokestatic(random_method), // Call Math.random()
+            JvmInstruction::Return,                      // Return (void method for test)
+        ];
+
+        let result = vm.execute_method(bytecode, constant_pool, 0);
+        assert!(result.is_ok());
+
+        // Check that there's a double value on the stack (but we return void, so won't get it)
+        // The fact that it executes without error means the method resolution worked
     }
 }
