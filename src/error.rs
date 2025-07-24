@@ -128,4 +128,18 @@ pub enum SemanticError {
 pub enum RuntimeError {
     #[error("Invalid stack state")]
     InvalidStackState,
+    #[error("Stack underflow")]
+    StackUnderflow,
+    #[error("Stack overflow")]
+    StackOverflow,
+    #[error("Division by zero")]
+    DivisionByZero,
+    #[error("Invalid instruction pointer: {0}")]
+    InvalidInstructionPointer(usize),
+    #[error("Invalid opcode: {0}")]
+    InvalidOpcode(u8),
+    #[error("Call stack overflow")]
+    CallStackOverflow,
+    #[error("Call stack underflow")]
+    CallStackUnderflow,
 }
