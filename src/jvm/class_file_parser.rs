@@ -137,10 +137,7 @@ impl ClassFileParser {
                 }
                 _ => {
                     // Unknown constant pool tag
-                    return Err(RuntimeError::UnknownConstantPoolTag {
-                        tag,
-                        index: i as u16,
-                    });
+                    return Err(RuntimeError::UnknownConstantPoolTag { tag, index: i });
                 }
             }
             i += 1;

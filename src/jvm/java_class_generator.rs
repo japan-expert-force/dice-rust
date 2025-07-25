@@ -254,7 +254,7 @@ impl JavaClassGenerator {
             }
             _ => {
                 // Handle unsupported values explicitly
-                panic!("Value {} is outside the supported range for Sipush (-32768 to 32767)", value);
+                panic!("Value {value} is outside the supported range for Sipush (-32768 to 32767)");
             }
         }
     }

@@ -82,6 +82,7 @@ fn main() {
         Commands::Compile {
             expression,
             output,
+            verbose: _,
         } => {
             if let Err(e) = jvm::generate_java_class(&expression, &output) {
                 eprintln!("Java class generation error: {e}");
