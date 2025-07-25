@@ -10,8 +10,49 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: Build and Release
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      release-id: ${{ steps.create-release.outputs.id }}
+      upload-url: ${{ steps.create-release.outputs.upload_url }}
+
+    steps:
+      - name: Create GitHub Release
+        id: create-release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          body: |
+            ## Installation
+
+            Download the appropriate binary for your platform:
+
+            - **Windows (x64)**: `dice-rust-${{ github.ref_name }}-windows-x86_64.zip`
+            - **macOS (Intel)**: `dice-rust-${{ github.ref_name }}-macos-x86_64.tar.gz`
+            - **macOS (Apple Silicon)**: `dice-rust-${{ github.ref_name }}-macos-aarch64.tar.gz`
+            - **Linux (x64)**: `dice-rust-${{ github.ref_name }}-linux-x86_64.tar.gz`
+
+            Extract the archive and run the binary directly:
+
+            ```bash
+            # Run with default expression (2d100)
+            ./dice_rust run
+
+            # Run with custom expression
+            ./dice_rust run "3d6"
+            ./dice_rust run "1d20"
+            ```
+
+            ## System Requirements
+
+            - No additional runtime dependencies required
+            - Supported platforms: Windows (x64), macOS (Intel/Apple Silicon), Linux (x64)
+
+  build-and-upload:
+    name: Build and Upload
+    needs: create-release
     strategy:
       matrix:
         include:
@@ -73,30 +114,3 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ matrix.archive_name }}
-          generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
-          body: |
-            ## Installation
-
-            Download the appropriate binary for your platform:
-
-            - **Windows (x64)**: `dice-rust-${{ github.ref_name }}-windows-x86_64.zip`
-            - **macOS (Intel)**: `dice-rust-${{ github.ref_name }}-macos-x86_64.tar.gz`
-            - **macOS (Apple Silicon)**: `dice-rust-${{ github.ref_name }}-macos-aarch64.tar.gz`
-            - **Linux (x64)**: `dice-rust-${{ github.ref_name }}-linux-x86_64.tar.gz`
-
-            Extract the archive and run the binary directly:
-
-            ```bash
-            # Run with default expression (2d100)
-            ./dice_rust run
-
-            # Run with custom expression
-            ./dice_rust run "3d6"
-            ./dice_rust run "1d20"
-            ```
-
-            ## System Requirements
-
-            - No additional runtime dependencies required
-            - Supported platforms: Windows (x64), macOS (Intel/Apple Silicon), Linux (x64)
