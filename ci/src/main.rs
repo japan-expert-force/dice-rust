@@ -21,7 +21,7 @@ fn main() {
             .status()
             .expect("Failed to execute command");
         if !status.success() {
-            panic!("Command `{}` failed with status: {}", name, status);
+            panic!("Command `{}` failed with status: {}", command.join(" "), status);
         }
     }
 }
