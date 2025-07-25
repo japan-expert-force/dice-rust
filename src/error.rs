@@ -138,6 +138,8 @@ pub enum RuntimeError {
     InvalidInstructionPointer(usize),
     #[error("Invalid opcode: {0}")]
     InvalidOpcode(u8),
+    #[error("Unknown constant pool tag: {tag} at index {index}")]
+    UnknownConstantPoolTag { tag: u8, index: u16 },
     #[error("Call stack overflow")]
     CallStackOverflow,
     #[error("Call stack underflow")]
