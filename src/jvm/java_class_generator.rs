@@ -1,9 +1,9 @@
 use super::jvm_types::{ConstantPool, ConstantPoolEntry, JvmInstruction};
 use crate::analyzer::SemanticAnalyzer;
-/// Javaクラスファイル生成器
+/// Java class file generator
 use std::fs;
 
-/// 完全なJavaクラスファイル生成器
+/// Complete Java class file generator
 pub struct JavaClassGenerator {
     constant_pool: ConstantPool,
     class_name: String,
@@ -17,12 +17,12 @@ impl JavaClassGenerator {
         }
     }
 
-    /// Dice式からJavaクラスファイルを生成
+    /// Generate Java class file from Dice expression
     pub fn generate_dice_class(
         &mut self,
         expression: &str,
     ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-        // AST解析
+        // AST analysis
         let mut analyzer = SemanticAnalyzer::new(expression)?;
         let ast = analyzer.analyze()?;
 
@@ -38,7 +38,7 @@ impl JavaClassGenerator {
         Err("Invalid expression".into())
     }
 
-    /// Dice式からJVM命令シーケンスを生成（VM実行用）
+    /// Generate JVM instruction sequence from Dice expression (for VM execution)
     pub fn generate_dice_instructions(
         &mut self,
         expression: &str,
@@ -56,7 +56,7 @@ impl JavaClassGenerator {
         Err("Invalid expression".into())
     }
 
-    /// 定数プールをセットアップ
+    /// Setup constant pool
     fn setup_constant_pool(&mut self) {
         // 1: UTF8 - class name
         self.constant_pool.add_utf8(self.class_name.clone());
@@ -142,7 +142,7 @@ impl JavaClassGenerator {
         self.constant_pool.add_methodref(23, 30);
     }
 
-    /// Dice用のバイトコードを生成
+    /// Generate bytecode for Dice
     fn generate_dice_bytecode(
         &self,
         count: u32,
@@ -151,10 +151,10 @@ impl JavaClassGenerator {
         let mut instructions = Vec::new();
 
         if count == 1 {
-            // 単一のダイス - Totalを表示しない
+            // Single dice - don't display Total
             self.generate_single_dice(&mut instructions, faces);
         } else {
-            // 複数のダイス - 各結果とTotalを表示
+            // Multiple dice - display each result and Total
             self.generate_multiple_dice(&mut instructions, count, faces);
         }
 
@@ -162,7 +162,7 @@ impl JavaClassGenerator {
         Ok(instructions)
     }
 
-    /// 単一ダイスのバイトコード生成
+    /// Generate bytecode for single dice
     fn generate_single_dice(&self, instructions: &mut Vec<JvmInstruction>, faces: u32) {
         // Math.random() * faces + 1
         instructions.push(JvmInstruction::Invokestatic(35)); // Math.random()
@@ -172,13 +172,13 @@ impl JavaClassGenerator {
         instructions.push(JvmInstruction::Dadd);
         instructions.push(JvmInstruction::D2i);
 
-        // System.outに結果を出力
+        // Output result to System.out
         instructions.push(JvmInstruction::Getstatic(31)); // System.out
         instructions.push(JvmInstruction::Swap);
         instructions.push(JvmInstruction::Invokevirtual(33)); // println(I)V
     }
 
-    /// 複数ダイスのバイトコード生成
+    /// Generate bytecode for multiple dice
     fn generate_multiple_dice(
         &self,
         instructions: &mut Vec<JvmInstruction>,
@@ -187,7 +187,7 @@ impl JavaClassGenerator {
     ) {
         instructions.push(JvmInstruction::Iconst0); // total = 0
 
-        // 各ダイスを振る
+        // Roll each dice
         for _ in 0..count {
             // Math.random() * faces + 1
             instructions.push(JvmInstruction::Invokestatic(35)); // Math.random()
@@ -197,46 +197,46 @@ impl JavaClassGenerator {
             instructions.push(JvmInstruction::Dadd);
             instructions.push(JvmInstruction::D2i);
 
-            // 結果を複製（1つは表示用、1つは合計用）
+            // Duplicate result (one for display, one for total)
             instructions.push(JvmInstruction::Dup);
 
-            // System.outに個別結果を出力
+            // Output individual result to System.out
             instructions.push(JvmInstruction::Getstatic(31)); // System.out
             instructions.push(JvmInstruction::Swap);
             instructions.push(JvmInstruction::Invokevirtual(33)); // println(I)V
 
-            // 合計に加算
+            // Add to total
             instructions.push(JvmInstruction::Iadd);
         }
 
-        // System.errに"Total: "を出力
-        instructions.push(JvmInstruction::Dup); // 合計を複製
+        // Output "Total: " to System.err
+        instructions.push(JvmInstruction::Dup); // Duplicate total
         instructions.push(JvmInstruction::Getstatic(32)); // System.err
         instructions.push(JvmInstruction::Ldc(24)); // "Total: "
         instructions.push(JvmInstruction::Invokevirtual(34)); // print(String)V
 
-        // System.errに合計を出力
+        // Output total to System.err
         instructions.push(JvmInstruction::Getstatic(32)); // System.err
         instructions.push(JvmInstruction::Swap);
         instructions.push(JvmInstruction::Invokevirtual(33)); // println(I)V
-        instructions.push(JvmInstruction::Pop); // スタックから残った値を削除
+        instructions.push(JvmInstruction::Pop); // Remove remaining value from stack
     }
 
-    /// double定数をスタックにプッシュ
+    /// Push double constant to stack
     fn push_double_constant(&self, instructions: &mut Vec<JvmInstruction>, value: f64) {
         if value == 0.0 {
             instructions.push(JvmInstruction::Dconst0);
         } else if value == 1.0 {
             instructions.push(JvmInstruction::Dconst1);
         } else {
-            // より複雑な定数の場合、整数変換を使用
+            // For more complex constants, use integer conversion
             let int_val = value as i32;
             self.push_int_constant(instructions, int_val);
             instructions.push(JvmInstruction::I2d);
         }
     }
 
-    /// int定数をスタックにプッシュ
+    /// Push int constant to stack
     fn push_int_constant(&self, instructions: &mut Vec<JvmInstruction>, value: i32) {
         match value {
             -1 => instructions.push(JvmInstruction::IconstM1),
@@ -253,13 +253,13 @@ impl JavaClassGenerator {
                 instructions.push(JvmInstruction::Sipush(value as i16));
             }
             _ => {
-                // 大きな値は簡略化
+                // Simplify large values
                 instructions.push(JvmInstruction::Sipush((value % 32767) as i16));
             }
         }
     }
 
-    /// Javaクラスファイルを生成
+    /// Generate Java class file
     fn generate_class_file(
         &self,
         bytecode_instructions: Vec<JvmInstruction>,
@@ -273,8 +273,14 @@ impl JavaClassGenerator {
         bytes.extend_from_slice(&0u16.to_be_bytes()); // Minor version
         bytes.extend_from_slice(&52u16.to_be_bytes()); // Major version
 
-        // Constant pool count (entries + 1)
-        bytes.extend_from_slice(&(self.constant_pool.entries().len() as u16 + 1).to_be_bytes());
+        // Constant pool count (non-placeholder entries + 1)
+        let non_placeholder_count = self
+            .constant_pool
+            .entries()
+            .iter()
+            .filter(|entry| !matches!(entry, ConstantPoolEntry::Placeholder))
+            .count();
+        bytes.extend_from_slice(&(non_placeholder_count as u16 + 1).to_be_bytes());
 
         // Constant pool entries
         self.write_constant_pool(&mut bytes);
@@ -306,7 +312,7 @@ impl JavaClassGenerator {
         Ok(bytes)
     }
 
-    /// 定数プールをバイナリ形式で書き込み
+    /// Write constant pool in binary format
     fn write_constant_pool(&self, bytes: &mut Vec<u8>) {
         for entry in self.constant_pool.entries() {
             match entry {
@@ -355,15 +361,16 @@ impl JavaClassGenerator {
                     bytes.extend_from_slice(&d.to_be_bytes());
                 }
                 ConstantPoolEntry::Placeholder => {
-                    // Placeholder entries for second slot of 8-byte constants
-                    // These should not be written to the actual class file
-                    // as they don't exist in the JVM spec
+                    // Skip placeholder entries - they should not be written to the class file
+                    // as they represent the second slot of 8-byte constants (Long/Double)
+                    // which are automatically handled by the JVM
+                    continue;
                 }
             }
         }
     }
 
-    /// mainメソッドを書き込み
+    /// Write main method
     fn write_main_method(&self, bytes: &mut Vec<u8>, instructions: Vec<JvmInstruction>) {
         // Access flags (public static)
         bytes.extend_from_slice(&0x0009u16.to_be_bytes());
@@ -393,7 +400,7 @@ impl JavaClassGenerator {
         bytes.extend_from_slice(&0u16.to_be_bytes()); // attributes_count
     }
 
-    /// JVM命令をバイト配列に変換
+    /// Convert JVM instructions to byte array
     fn instructions_to_bytes(&self, instructions: Vec<JvmInstruction>) -> Vec<u8> {
         let mut bytes = Vec::new();
 
@@ -448,8 +455,10 @@ impl JavaClassGenerator {
                 }
                 JvmInstruction::Return => bytes.push(0xB1),
                 JvmInstruction::Ireturn => bytes.push(0xAC),
+                JvmInstruction::Nop => bytes.push(0x00),
                 _ => {
-                    // その他の命令は今回は未実装
+                    // Other instructions not implemented for this use case
+                    // Use nop as fallback
                     bytes.push(0x00); // nop
                 }
             }
@@ -463,7 +472,7 @@ impl JavaClassGenerator {
     }
 }
 
-/// 統一されたJVMシステム - Java class file生成
+/// Unified JVM system - Java class file generation
 pub fn generate_java_class(
     expression: &str,
     class_name: &str,
@@ -480,7 +489,7 @@ pub fn generate_java_class(
     Ok(())
 }
 
-/// VM実行用のJVM命令を生成
+/// Generate JVM instructions for VM execution
 pub fn generate_vm_instructions(
     expression: &str,
 ) -> Result<(Vec<JvmInstruction>, ConstantPool), Box<dyn std::error::Error>> {

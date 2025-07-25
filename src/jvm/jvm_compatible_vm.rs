@@ -996,7 +996,7 @@ impl JvmCompatibleVm {
                 frame.pc += 1;
             }
 
-            // Long ローカル変数操作
+            // Long local variable operations
             JvmInstruction::Lload(index) => {
                 let value = frame
                     .locals
@@ -1095,6 +1095,11 @@ impl JvmCompatibleVm {
                     frame.locals.resize(4, JvmValue::Long(0));
                 }
                 frame.locals[3] = value;
+                frame.pc += 1;
+            }
+
+            JvmInstruction::Nop => {
+                // No operation - just increment program counter
                 frame.pc += 1;
             }
         }

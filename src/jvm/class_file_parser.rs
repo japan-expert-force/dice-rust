@@ -71,16 +71,14 @@ impl ClassFileParser {
                     // CONSTANT_Long
                     let value = read_i64(&mut cursor)?;
                     constant_pool.add_long(value);
-                    // Long takes 2 slots, add placeholder for the second slot
-                    constant_pool.add_placeholder();
+                    // Placeholder is automatically added by add_long method
                     i += 1; // Skip the next index for 8-byte constant
                 }
                 6 => {
                     // CONSTANT_Double
                     let value = read_f64(&mut cursor)?;
                     constant_pool.add_double(value);
-                    // Double takes 2 slots, add placeholder for the second slot
-                    constant_pool.add_placeholder();
+                    // Placeholder is automatically added by add_double method
                     i += 1; // Skip the next index for 8-byte constant
                 }
                 7 => {

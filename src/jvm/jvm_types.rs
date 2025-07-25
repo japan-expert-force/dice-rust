@@ -1,8 +1,8 @@
-/// JVMバイトコード命令とデータ型定義
-/// JVMバイトコード命令
+/// JVM bytecode instructions and data type definitions
+/// JVM bytecode instructions
 #[derive(Debug, Clone)]
 pub enum JvmInstruction {
-    // 定数プール操作
+    // Constant pool operations
     Ldc(u16),    // Load constant from pool
     Ldc2W(u16),  // Load 2-word constant from pool (long/double)
     IconstM1,    // Load -1
@@ -17,29 +17,29 @@ pub enum JvmInstruction {
     Bipush(i8),  // Push byte value
     Sipush(i16), // Push short value
 
-    // スタック操作
+    // Stack operations
     Pop,  // Pop top value
     Dup,  // Duplicate top value
     Swap, // Swap top two values
 
-    // 算術演算
+    // Arithmetic operations
     Iadd, // Add two ints
     Isub, // Subtract two ints
     Imul, // Multiply two ints
     Idiv, // Divide two ints
     Irem, // Remainder of two ints
 
-    // 浮動小数点演算
+    // Floating-point operations
     Dadd, // Add two doubles
     Dsub, // Subtract two doubles
     Dmul, // Multiply two doubles
     Ddiv, // Divide two doubles
 
-    // 型変換
+    // Type conversion
     I2d, // Convert int to double
     D2i, // Convert double to int
 
-    // 制御フロー
+    // Control flow
     Ifeq(u16), // Branch if int equals zero
     Ifne(u16), // Branch if int not equals zero
     Iflt(u16), // Branch if int less than zero
@@ -48,7 +48,7 @@ pub enum JvmInstruction {
     Ifle(u16), // Branch if int less or equal zero
     Goto(u16), // Unconditional branch
 
-    // ローカル変数操作
+    // Local variable operations
     Iload(u8),  // Load int from local variable
     Iload0,     // Load int from local variable 0
     Iload1,     // Load int from local variable 1
@@ -93,28 +93,31 @@ pub enum JvmInstruction {
     Lstore2,    // Store long to local variable 2
     Lstore3,    // Store long to local variable 3
 
-    // メソッド呼び出し
+    // Method invocation
     Invokevirtual(u16), // Invoke virtual method
     Invokestatic(u16),  // Invoke static method
     Invokespecial(u16), // Invoke special method (constructors, private methods)
     Invokedynamic(u16), // Invoke dynamic method (for lambda and string concatenation)
 
-    // オブジェクト操作
+    // Object operations
     New(u16), // Create new object
 
-    // リターン
+    // Return instructions
     Return,  // Return void
     Ireturn, // Return int
 
-    // フィールドアクセス
+    // Field access
     Getstatic(u16), // Get static field
 
-    // 定数
+    // Constants
     Dconst0, // Push double 0.0
     Dconst1, // Push double 1.0
+
+    // Miscellaneous
+    Nop, // No operation
 }
 
-/// 定数プールエントリ
+/// Constant pool entry
 #[derive(Debug, Clone)]
 pub enum ConstantPoolEntry {
     Utf8(String),
@@ -130,7 +133,7 @@ pub enum ConstantPoolEntry {
     Placeholder, // Used for the second slot of 8-byte constants
 }
 
-/// 定数プール
+/// Constant pool
 #[derive(Debug, Clone)]
 pub struct ConstantPool {
     entries: Vec<ConstantPoolEntry>,
@@ -207,12 +210,16 @@ impl ConstantPool {
     pub fn add_long(&mut self, value: i64) -> u16 {
         let index = self.entries.len();
         self.entries.push(ConstantPoolEntry::Long(value));
+        // Long takes 2 slots in the constant pool, add placeholder for the second slot
+        self.entries.push(ConstantPoolEntry::Placeholder);
         index as u16 + 1
     }
 
     pub fn add_double(&mut self, value: f64) -> u16 {
         let index = self.entries.len();
         self.entries.push(ConstantPoolEntry::Double(value));
+        // Double takes 2 slots in the constant pool, add placeholder for the second slot
+        self.entries.push(ConstantPoolEntry::Placeholder);
         index as u16 + 1
     }
 
