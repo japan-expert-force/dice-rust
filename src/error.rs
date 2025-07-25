@@ -128,4 +128,22 @@ pub enum SemanticError {
 pub enum RuntimeError {
     #[error("Invalid stack state")]
     InvalidStackState,
+    #[error("Stack underflow")]
+    StackUnderflow,
+    #[error("Stack overflow")]
+    StackOverflow,
+    #[error("Division by zero")]
+    DivisionByZero,
+    #[error("Invalid instruction pointer: {0}")]
+    InvalidInstructionPointer(usize),
+    #[error("Invalid opcode: {0}")]
+    InvalidOpcode(u8),
+    #[error(
+        "Unknown constant pool tag: {tag} at index {index}. Valid tags: 1=Utf8, 3=Integer, 4=Float, 5=Long, 6=Double, 7=Class, 8=String, 9=Fieldref, 10=Methodref, 11=InterfaceMethodref, 12=NameAndType, 15=MethodHandle, 16=MethodType, 18=InvokeDynamic"
+    )]
+    UnknownConstantPoolTag { tag: u8, index: u16 },
+    #[error("Call stack overflow")]
+    CallStackOverflow,
+    #[error("Call stack underflow")]
+    CallStackUnderflow,
 }
