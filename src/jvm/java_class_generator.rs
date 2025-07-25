@@ -1,5 +1,5 @@
-use crate::analyzer::SemanticAnalyzer;
 use super::jvm_types::{ConstantPool, ConstantPoolEntry, JvmInstruction};
+use crate::analyzer::SemanticAnalyzer;
 /// Javaクラスファイル生成器
 use std::fs;
 

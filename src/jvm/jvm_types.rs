@@ -1,5 +1,4 @@
 /// JVMバイトコード命令とデータ型定義
-
 /// JVMバイトコード命令
 #[derive(Debug, Clone)]
 pub enum JvmInstruction {

@@ -139,7 +139,7 @@ impl ClassFileParser {
                 }
                 _ => {
                     // Skip unknown constant types for now
-                    eprintln!("Error: Unknown constant pool tag {} at index {}", tag, i);
+                    eprintln!("Error: Unknown constant pool tag {tag} at index {i}");
                     return Err(RuntimeError::InvalidStackState);
                 }
             }

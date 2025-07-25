@@ -748,7 +748,7 @@ impl JvmCompatibleVm {
                     .operand_stack
                     .pop()
                     .ok_or(RuntimeError::StackUnderflow)?;
-                if frame.locals.len() <= 0 {
+                if frame.locals.is_empty() {
                     frame.locals.resize(1, JvmValue::Int(0));
                 }
                 frame.locals[0] = value;
@@ -852,7 +852,7 @@ impl JvmCompatibleVm {
                     .operand_stack
                     .pop()
                     .ok_or(RuntimeError::StackUnderflow)?;
-                if frame.locals.len() <= 0 {
+                if frame.locals.is_empty() {
                     frame.locals.resize(1, JvmValue::Reference(None));
                 }
                 frame.locals[0] = value;
@@ -956,7 +956,7 @@ impl JvmCompatibleVm {
                     .operand_stack
                     .pop()
                     .ok_or(RuntimeError::StackUnderflow)?;
-                if frame.locals.len() <= 0 {
+                if frame.locals.is_empty() {
                     frame.locals.resize(1, JvmValue::Double(0.0));
                 }
                 frame.locals[0] = value;
@@ -2638,7 +2638,7 @@ fn count_method_parameters(descriptor: &str) -> usize {
     let mut chars = descriptor.chars();
 
     // Skip until we find the opening parenthesis
-    while let Some(ch) = chars.next() {
+    for ch in chars.by_ref() {
         if ch == '(' {
             break;
         }
@@ -2651,7 +2651,7 @@ fn count_method_parameters(descriptor: &str) -> usize {
             'B' | 'C' | 'D' | 'F' | 'I' | 'J' | 'S' | 'Z' => count += 1,
             'L' => {
                 // Object type - skip until semicolon
-                while let Some(c) = chars.next() {
+                for c in chars.by_ref() {
                     if c == ';' {
                         break;
                     }
@@ -2665,7 +2665,7 @@ fn count_method_parameters(descriptor: &str) -> usize {
                         'B' | 'C' | 'D' | 'F' | 'I' | 'J' | 'S' | 'Z' => count += 1,
                         'L' => {
                             // Object array - skip until semicolon
-                            while let Some(c) = chars.next() {
+                            for c in chars.by_ref() {
                                 if c == ';' {
                                     break;
                                 }
