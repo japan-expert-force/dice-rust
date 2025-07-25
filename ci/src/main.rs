@@ -15,13 +15,17 @@ fn main() {
     ];
 
     for (name, command) in tasks {
-        println!("> {}", command.join(" "));
+        println!("[{}] > {}", name, command.join(" "));
         let status = Command::new(&command[0])
             .args(&command[1..])
             .status()
             .expect("Failed to execute command");
         if !status.success() {
-            panic!("Command `{}` failed with status: {}", command.join(" "), status);
+            panic!(
+                "Command `{}` failed with status: {}",
+                command.join(" "),
+                status
+            );
         }
     }
 }
