@@ -212,27 +212,35 @@ Program {
 
 ## Development
 
-### Running Tests
+### Running CI Tasks
 
 ```bash
+# Run all CI tasks (format, check, test, clippy, build, audit)
+cargo ci
+```
+
+This command runs a comprehensive set of quality assurance tasks:
+
+- **cargo fmt**: Code formatting
+- **cargo check**: Code compilation check
+- **cargo test**: Unit and integration tests
+- **cargo clippy**: Linting and code quality checks
+- **cargo build --release**: Release build
+- **cargo-audit**: Security vulnerability audit
+
+### Running Individual Tasks
+
+```bash
+# Running tests
 cargo test
-```
 
-### Building Documentation
-
-```bash
+# Building documentation
 cargo doc --open
-```
 
-### Code Formatting
-
-```bash
+# Code formatting
 cargo fmt
-```
 
-### Linting
-
-```bash
+# Linting
 cargo clippy
 ```
 
