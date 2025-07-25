@@ -163,7 +163,7 @@ impl JavaClassGenerator {
 
     /// Generate bytecode for Dice
     fn generate_dice_bytecode(
-        &self,
+        &mut self,
         count: u32,
         faces: u32,
     ) -> Result<Vec<JvmInstruction>, JavaClassGeneratorError> {
@@ -185,7 +185,7 @@ impl JavaClassGenerator {
 
     /// Generate bytecode for single dice
     fn generate_single_dice(
-        &self,
+        &mut self,
         instructions: &mut Vec<JvmInstruction>,
         faces: u32,
     ) -> Result<(), String> {
@@ -206,7 +206,7 @@ impl JavaClassGenerator {
 
     /// Generate bytecode for multiple dice
     fn generate_multiple_dice(
-        &self,
+        &mut self,
         instructions: &mut Vec<JvmInstruction>,
         count: u32,
         faces: u32,
@@ -251,7 +251,7 @@ impl JavaClassGenerator {
 
     /// Push double constant to stack
     fn push_double_constant(
-        &self,
+        &mut self,
         instructions: &mut Vec<JvmInstruction>,
         value: f64,
     ) -> Result<(), String> {
@@ -270,7 +270,7 @@ impl JavaClassGenerator {
 
     /// Push int constant to stack
     fn push_int_constant(
-        &self,
+        &mut self,
         instructions: &mut Vec<JvmInstruction>,
         value: i32,
     ) -> Result<(), String> {
@@ -289,10 +289,9 @@ impl JavaClassGenerator {
                 instructions.push(JvmInstruction::Sipush(value as i16));
             }
             _ => {
-                // Handle unsupported values explicitly
-                return Err(format!(
-                    "Value {value} is outside the supported range for Sipush (-32768 to 32767)"
-                ));
+                // For values outside Sipush range, use constant pool with Ldc instruction
+                let index = self.constant_pool.add_integer(value)?;
+                instructions.push(JvmInstruction::Ldc(index));
             }
         }
         Ok(())

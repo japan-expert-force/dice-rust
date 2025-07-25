@@ -1,6 +1,17 @@
 use crate::{analyzer::SemanticAnalyzer, error::RuntimeError};
 use rand::prelude::*;
 
+/// Represents the control flow result of executing an instruction
+#[derive(Debug, PartialEq)]
+enum ExecutionControl {
+    /// Continue to the next instruction
+    Continue,
+    /// Jump by the specified relative offset
+    Jump(isize),
+    /// Terminate the program execution
+    Terminate,
+}
+
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 enum Instruction {
@@ -159,23 +170,27 @@ impl StackVm {
 
         while pc < bytecode.len() {
             let instruction = &bytecode[pc];
-            let jump_offset = self.execute_instruction(instruction)?;
+            let control = self.execute_instruction(instruction)?;
 
-            if jump_offset == isize::MAX {
-                // Ret instruction - exit execution loop
-                break;
-            } else if jump_offset == 0 {
-                pc += 1;
-            } else {
-                // Apply relative offset for branches
-                let new_pc = (pc as isize) + jump_offset;
-                if new_pc < 0 {
-                    return Err(Box::new(RuntimeError::InvalidStackState));
-                } else if new_pc >= bytecode.len() as isize {
-                    // Jump beyond bytecode end - treat as program termination
+            match control {
+                ExecutionControl::Terminate => {
+                    // Ret instruction - exit execution loop
                     break;
-                } else {
-                    pc = new_pc as usize;
+                }
+                ExecutionControl::Continue => {
+                    pc += 1;
+                }
+                ExecutionControl::Jump(offset) => {
+                    // Apply relative offset for branches
+                    let new_pc = (pc as isize) + offset;
+                    if new_pc < 0 {
+                        return Err(Box::new(RuntimeError::InvalidStackState));
+                    } else if new_pc >= bytecode.len() as isize {
+                        // Jump beyond bytecode end - treat as program termination
+                        break;
+                    } else {
+                        pc = new_pc as usize;
+                    }
                 }
             }
         }
@@ -187,7 +202,7 @@ impl StackVm {
     fn execute_instruction(
         &mut self,
         instruction: &Instruction,
-    ) -> Result<isize, Box<dyn std::error::Error>> {
+    ) -> Result<ExecutionControl, Box<dyn std::error::Error>> {
         match instruction {
             // Constants
             Instruction::LdcI4(value) => {
@@ -282,18 +297,18 @@ impl StackVm {
 
             // Branching
             Instruction::Br(offset) => {
-                return Ok(*offset);
+                return Ok(ExecutionControl::Jump(*offset));
             }
             Instruction::Brtrue(offset) => {
                 let value = self.stack.pop().ok_or(RuntimeError::InvalidStackState)?;
                 if value != 0 {
-                    return Ok(*offset);
+                    return Ok(ExecutionControl::Jump(*offset));
                 }
             }
             Instruction::Brfalse(offset) => {
                 let value = self.stack.pop().ok_or(RuntimeError::InvalidStackState)?;
                 if value == 0 {
-                    return Ok(*offset);
+                    return Ok(ExecutionControl::Jump(*offset));
                 }
             }
 
@@ -335,9 +350,9 @@ impl StackVm {
             }
             Instruction::Ret => {
                 // Return from method - signal to exit the execution loop
-                return Ok(isize::MAX); // Special value to indicate program end
+                return Ok(ExecutionControl::Terminate);
             }
         };
-        Ok(0) // No jump, continue to next instruction
+        Ok(ExecutionControl::Continue) // No jump, continue to next instruction
     }
 }
