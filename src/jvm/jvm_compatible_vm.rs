@@ -2738,25 +2738,40 @@ mod tests {
         let mut constant_pool = ConstantPool::new();
 
         // Set up constant pool for proper JVM-compatible Hello World
-        let hello_utf8 = constant_pool.add_utf8("Hello, World!".to_string());
-        let hello_string = constant_pool.add_string(hello_utf8);
+        let hello_utf8 = constant_pool.add_utf8("Hello, World!".to_string()).unwrap();
+        let hello_string = constant_pool.add_string(hello_utf8).unwrap();
 
-        let system_utf8 = constant_pool.add_utf8("java/lang/System".to_string());
-        let system_class = constant_pool.add_class(system_utf8);
+        let system_utf8 = constant_pool
+            .add_utf8("java/lang/System".to_string())
+            .unwrap();
+        let system_class = constant_pool.add_class(system_utf8).unwrap();
 
-        let out_utf8 = constant_pool.add_utf8("out".to_string());
-        let printstream_desc_utf8 = constant_pool.add_utf8("Ljava/io/PrintStream;".to_string());
-        let out_name_and_type = constant_pool.add_name_and_type(out_utf8, printstream_desc_utf8);
-        let system_out_field = constant_pool.add_fieldref(system_class, out_name_and_type);
+        let out_utf8 = constant_pool.add_utf8("out".to_string()).unwrap();
+        let printstream_desc_utf8 = constant_pool
+            .add_utf8("Ljava/io/PrintStream;".to_string())
+            .unwrap();
+        let out_name_and_type = constant_pool
+            .add_name_and_type(out_utf8, printstream_desc_utf8)
+            .unwrap();
+        let system_out_field = constant_pool
+            .add_fieldref(system_class, out_name_and_type)
+            .unwrap();
 
-        let printstream_utf8 = constant_pool.add_utf8("java/io/PrintStream".to_string());
-        let printstream_class = constant_pool.add_class(printstream_utf8);
+        let printstream_utf8 = constant_pool
+            .add_utf8("java/io/PrintStream".to_string())
+            .unwrap();
+        let printstream_class = constant_pool.add_class(printstream_utf8).unwrap();
 
-        let println_utf8 = constant_pool.add_utf8("println".to_string());
-        let println_desc_utf8 = constant_pool.add_utf8("(Ljava/lang/String;)V".to_string());
-        let println_name_and_type =
-            constant_pool.add_name_and_type(println_utf8, println_desc_utf8);
-        let println_method = constant_pool.add_methodref(printstream_class, println_name_and_type);
+        let println_utf8 = constant_pool.add_utf8("println".to_string()).unwrap();
+        let println_desc_utf8 = constant_pool
+            .add_utf8("(Ljava/lang/String;)V".to_string())
+            .unwrap();
+        let println_name_and_type = constant_pool
+            .add_name_and_type(println_utf8, println_desc_utf8)
+            .unwrap();
+        let println_method = constant_pool
+            .add_methodref(printstream_class, println_name_and_type)
+            .unwrap();
 
         let bytecode = vec![
             JvmInstruction::Getstatic(system_out_field), // Get System.out
@@ -2780,13 +2795,19 @@ mod tests {
         let mut constant_pool = ConstantPool::new();
 
         // Set up constant pool for Math.random()
-        let math_utf8 = constant_pool.add_utf8("java/lang/Math".to_string());
-        let math_class = constant_pool.add_class(math_utf8);
+        let math_utf8 = constant_pool
+            .add_utf8("java/lang/Math".to_string())
+            .unwrap();
+        let math_class = constant_pool.add_class(math_utf8).unwrap();
 
-        let random_utf8 = constant_pool.add_utf8("random".to_string());
-        let random_desc_utf8 = constant_pool.add_utf8("()D".to_string());
-        let random_name_and_type = constant_pool.add_name_and_type(random_utf8, random_desc_utf8);
-        let random_method = constant_pool.add_methodref(math_class, random_name_and_type);
+        let random_utf8 = constant_pool.add_utf8("random".to_string()).unwrap();
+        let random_desc_utf8 = constant_pool.add_utf8("()D".to_string()).unwrap();
+        let random_name_and_type = constant_pool
+            .add_name_and_type(random_utf8, random_desc_utf8)
+            .unwrap();
+        let random_method = constant_pool
+            .add_methodref(math_class, random_name_and_type)
+            .unwrap();
 
         let bytecode = vec![
             JvmInstruction::Invokestatic(random_method), // Call Math.random()

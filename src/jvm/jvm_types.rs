@@ -133,6 +133,12 @@ pub enum ConstantPoolEntry {
     Placeholder, // Used for the second slot of 8-byte constants
 }
 
+/// Constant pool error
+#[derive(Debug, Clone)]
+pub enum ConstantPoolError {
+    SizeLimitExceeded(u16),
+}
+
 /// Constant pool
 #[derive(Debug, Clone)]
 pub struct ConstantPool {
@@ -152,99 +158,159 @@ impl ConstantPool {
         }
     }
 
-    pub fn add_utf8(&mut self, value: String) -> Result<u16, ConstantPoolError> {
+    pub fn add_utf8(&mut self, value: String) -> Result<u16, String> {
         let index = self.entries.len();
         if index >= u16::MAX as usize {
-            return Err(ConstantPoolError::SizeLimitExceeded(u16::MAX));
+            return Err(format!(
+                "Constant pool size exceeds the maximum limit of {}",
+                u16::MAX
+            ));
         }
         self.entries.push(ConstantPoolEntry::Utf8(value));
         Ok(index as u16 + 1)
     }
 
-    pub fn add_class(&mut self, name_index: u16) -> Result<u16, ConstantPoolError> {
+    pub fn add_class(&mut self, name_index: u16) -> Result<u16, String> {
         let index = self.entries.len();
         if index >= u16::MAX as usize {
-            return Err(ConstantPoolError::SizeLimitExceeded(u16::MAX));
+            return Err(format!(
+                "Constant pool size exceeds the maximum limit of {}",
+                u16::MAX
+            ));
         }
         self.entries.push(ConstantPoolEntry::Class(name_index));
         Ok(index as u16 + 1)
     }
 
-    pub fn add_string(&mut self, utf8_index: u16) -> u16 {
+    pub fn add_string(&mut self, utf8_index: u16) -> Result<u16, String> {
         let index = self.entries.len();
         if index >= u16::MAX as usize {
-            panic!(
+            return Err(format!(
                 "Constant pool size exceeds the maximum limit of {}",
                 u16::MAX
-            );
+            ));
         }
         self.entries.push(ConstantPoolEntry::String(utf8_index));
-        index as u16 + 1
+        Ok(index as u16 + 1)
     }
 
-    pub fn add_fieldref(&mut self, class_index: u16, name_and_type_index: u16) -> u16 {
+    pub fn add_fieldref(
+        &mut self,
+        class_index: u16,
+        name_and_type_index: u16,
+    ) -> Result<u16, String> {
         let index = self.entries.len();
         if index >= u16::MAX as usize {
-            panic!(
+            return Err(format!(
                 "Constant pool size exceeds the maximum limit of {}",
                 u16::MAX
-            );
+            ));
         }
         self.entries.push(ConstantPoolEntry::Fieldref(
             class_index,
             name_and_type_index,
         ));
-        index as u16 + 1
+        Ok(index as u16 + 1)
     }
 
-    pub fn add_methodref(&mut self, class_index: u16, name_and_type_index: u16) -> u16 {
+    pub fn add_methodref(
+        &mut self,
+        class_index: u16,
+        name_and_type_index: u16,
+    ) -> Result<u16, String> {
         let index = self.entries.len();
+        if index >= u16::MAX as usize {
+            return Err(format!(
+                "Constant pool size exceeds the maximum limit of {}",
+                u16::MAX
+            ));
+        }
         self.entries.push(ConstantPoolEntry::Methodref(
             class_index,
             name_and_type_index,
         ));
-        index as u16 + 1
+        Ok(index as u16 + 1)
     }
 
-    pub fn add_name_and_type(&mut self, name_index: u16, descriptor_index: u16) -> u16 {
+    pub fn add_name_and_type(
+        &mut self,
+        name_index: u16,
+        descriptor_index: u16,
+    ) -> Result<u16, String> {
         let index = self.entries.len();
+        if index >= u16::MAX as usize {
+            return Err(format!(
+                "Constant pool size exceeds the maximum limit of {}",
+                u16::MAX
+            ));
+        }
         self.entries
             .push(ConstantPoolEntry::NameAndType(name_index, descriptor_index));
-        index as u16 + 1
+        Ok(index as u16 + 1)
     }
 
-    pub fn add_integer(&mut self, value: i32) -> u16 {
+    pub fn add_integer(&mut self, value: i32) -> Result<u16, String> {
         let index = self.entries.len();
+        if index >= u16::MAX as usize {
+            return Err(format!(
+                "Constant pool size exceeds the maximum limit of {}",
+                u16::MAX
+            ));
+        }
         self.entries.push(ConstantPoolEntry::Integer(value));
-        index as u16 + 1
+        Ok(index as u16 + 1)
     }
 
-    pub fn add_float(&mut self, value: f32) -> u16 {
+    pub fn add_float(&mut self, value: f32) -> Result<u16, String> {
         let index = self.entries.len();
+        if index >= u16::MAX as usize {
+            return Err(format!(
+                "Constant pool size exceeds the maximum limit of {}",
+                u16::MAX
+            ));
+        }
         self.entries.push(ConstantPoolEntry::Float(value));
-        index as u16 + 1
+        Ok(index as u16 + 1)
     }
 
-    pub fn add_long(&mut self, value: i64) -> u16 {
+    pub fn add_long(&mut self, value: i64) -> Result<u16, String> {
         let index = self.entries.len();
+        if index + 1 >= u16::MAX as usize {
+            return Err(format!(
+                "Constant pool size exceeds the maximum limit of {} (long requires 2 slots)",
+                u16::MAX
+            ));
+        }
         self.entries.push(ConstantPoolEntry::Long(value));
         // Long takes 2 slots in the constant pool, add placeholder for the second slot
         self.entries.push(ConstantPoolEntry::Placeholder);
-        index as u16 + 1
+        Ok(index as u16 + 1)
     }
 
-    pub fn add_double(&mut self, value: f64) -> u16 {
+    pub fn add_double(&mut self, value: f64) -> Result<u16, String> {
         let index = self.entries.len();
+        if index + 1 >= u16::MAX as usize {
+            return Err(format!(
+                "Constant pool size exceeds the maximum limit of {} (double requires 2 slots)",
+                u16::MAX
+            ));
+        }
         self.entries.push(ConstantPoolEntry::Double(value));
         // Double takes 2 slots in the constant pool, add placeholder for the second slot
         self.entries.push(ConstantPoolEntry::Placeholder);
-        index as u16 + 1
+        Ok(index as u16 + 1)
     }
 
-    pub fn add_placeholder(&mut self) -> u16 {
+    pub fn add_placeholder(&mut self) -> Result<u16, String> {
         let index = self.entries.len();
+        if index >= u16::MAX as usize {
+            return Err(format!(
+                "Constant pool size exceeds the maximum limit of {}",
+                u16::MAX
+            ));
+        }
         self.entries.push(ConstantPoolEntry::Placeholder);
-        index as u16 + 1
+        Ok(index as u16 + 1)
     }
 
     pub fn entries(&self) -> &Vec<ConstantPoolEntry> {

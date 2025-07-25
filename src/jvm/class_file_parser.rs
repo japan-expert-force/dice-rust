@@ -55,85 +55,113 @@ impl ClassFileParser {
                     // JVM Utf8 format can contain null bytes and modified UTF-8
                     // For now, replace invalid UTF-8 with replacement characters
                     let utf8_string = String::from_utf8_lossy(&bytes).into_owned();
-                    constant_pool.add_utf8(utf8_string);
+                    constant_pool
+                        .add_utf8(utf8_string)
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 3 => {
                     // CONSTANT_Integer
                     let value = read_i32(&mut cursor)?;
-                    constant_pool.add_integer(value);
+                    constant_pool
+                        .add_integer(value)
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 4 => {
                     // CONSTANT_Float
                     let value = read_f32(&mut cursor)?;
-                    constant_pool.add_float(value);
+                    constant_pool
+                        .add_float(value)
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 5 => {
                     // CONSTANT_Long
                     let value = read_i64(&mut cursor)?;
-                    constant_pool.add_long(value);
+                    constant_pool
+                        .add_long(value)
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                     // Placeholder is automatically added by add_long method
                     i += 1; // Skip the next index for 8-byte constant
                 }
                 6 => {
                     // CONSTANT_Double
                     let value = read_f64(&mut cursor)?;
-                    constant_pool.add_double(value);
+                    constant_pool
+                        .add_double(value)
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                     // Placeholder is automatically added by add_double method
                     i += 1; // Skip the next index for 8-byte constant
                 }
                 7 => {
                     // CONSTANT_Class
                     let name_index = read_u16(&mut cursor)?;
-                    constant_pool.add_class(name_index);
+                    constant_pool
+                        .add_class(name_index)
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 8 => {
                     // CONSTANT_String
                     let string_index = read_u16(&mut cursor)?;
-                    constant_pool.add_string(string_index);
+                    constant_pool
+                        .add_string(string_index)
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 9 => {
                     // CONSTANT_Fieldref
                     let class_index = read_u16(&mut cursor)?;
                     let name_and_type_index = read_u16(&mut cursor)?;
-                    constant_pool.add_fieldref(class_index, name_and_type_index);
+                    constant_pool
+                        .add_fieldref(class_index, name_and_type_index)
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 10 => {
                     // CONSTANT_Methodref
                     let class_index = read_u16(&mut cursor)?;
                     let name_and_type_index = read_u16(&mut cursor)?;
-                    constant_pool.add_methodref(class_index, name_and_type_index);
+                    constant_pool
+                        .add_methodref(class_index, name_and_type_index)
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 12 => {
                     // CONSTANT_NameAndType
                     let name_index = read_u16(&mut cursor)?;
                     let descriptor_index = read_u16(&mut cursor)?;
-                    constant_pool.add_name_and_type(name_index, descriptor_index);
+                    constant_pool
+                        .add_name_and_type(name_index, descriptor_index)
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 11 => {
                     // CONSTANT_InterfaceMethodref
                     let class_index = read_u16(&mut cursor)?;
                     let name_and_type_index = read_u16(&mut cursor)?;
-                    constant_pool.add_methodref(class_index, name_and_type_index);
+                    constant_pool
+                        .add_methodref(class_index, name_and_type_index)
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 15 => {
                     // CONSTANT_MethodHandle
                     let _reference_kind = read_u8(&mut cursor)?;
                     let _reference_index = read_u16(&mut cursor)?;
                     // For now, treat as placeholder
-                    constant_pool.add_placeholder();
+                    constant_pool
+                        .add_placeholder()
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 16 => {
                     // CONSTANT_MethodType
                     let _descriptor_index = read_u16(&mut cursor)?;
                     // For now, treat as placeholder
-                    constant_pool.add_placeholder();
+                    constant_pool
+                        .add_placeholder()
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 18 => {
                     // CONSTANT_InvokeDynamic
                     let _bootstrap_method_attr_index = read_u16(&mut cursor)?;
                     let _name_and_type_index = read_u16(&mut cursor)?;
                     // For now, treat as placeholder
-                    constant_pool.add_placeholder();
+                    constant_pool
+                        .add_placeholder()
+                        .map_err(|_e| RuntimeError::InvalidStackState)?;
                 }
                 _ => {
                     // Unknown constant pool tag

@@ -3,6 +3,34 @@ use crate::analyzer::SemanticAnalyzer;
 /// Java class file generator
 use std::fs;
 
+/// Java class generator error
+#[derive(Debug)]
+pub enum JavaClassGeneratorError {
+    CompilationError(String),
+}
+
+impl From<Box<dyn std::error::Error>> for JavaClassGeneratorError {
+    fn from(error: Box<dyn std::error::Error>) -> Self {
+        JavaClassGeneratorError::CompilationError(error.to_string())
+    }
+}
+
+impl From<String> for JavaClassGeneratorError {
+    fn from(error: String) -> Self {
+        JavaClassGeneratorError::CompilationError(error)
+    }
+}
+
+impl std::fmt::Display for JavaClassGeneratorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            JavaClassGeneratorError::CompilationError(msg) => write!(f, "Compilation error: {msg}"),
+        }
+    }
+}
+
+impl std::error::Error for JavaClassGeneratorError {}
+
 /// Complete Java class file generator
 pub struct JavaClassGenerator {
     constant_pool: ConstantPool,
@@ -30,7 +58,8 @@ impl JavaClassGenerator {
             let crate::ast::StatementKind::Expression { expr } = stmt.kind;
             let crate::ast::ExpressionKind::Dice { count, faces } = expr.kind;
 
-            self.setup_constant_pool();
+            self.setup_constant_pool()
+                .map_err(JavaClassGeneratorError::CompilationError)?;
             let bytecode = self.generate_dice_bytecode(count, faces)?;
             return self.generate_class_file(bytecode);
         }
@@ -50,85 +79,86 @@ impl JavaClassGenerator {
             let crate::ast::StatementKind::Expression { expr } = stmt.kind;
             let crate::ast::ExpressionKind::Dice { count, faces } = expr.kind;
 
-            return self.generate_dice_bytecode(count, faces);
+            return Ok(self.generate_dice_bytecode(count, faces)?);
         }
 
         Err("Invalid expression".into())
     }
 
     /// Setup constant pool
-    fn setup_constant_pool(&mut self) {
-        let _class_name_index = self.constant_pool.add_utf8(self.class_name.clone()); // UTF8 - class name
-        let _object_class_index = self.constant_pool.add_utf8("java/lang/Object".to_string()); // UTF8 - "java/lang/Object"
-        let _main_method_index = self.constant_pool.add_utf8("main".to_string()); // UTF8 - "main"
-        let _main_descriptor_index = self
-            .constant_pool
-            .add_utf8("([Ljava/lang/String;)V".to_string()); // UTF8 - "([Ljava/lang/String;)V"
-        let _code_index = self.constant_pool.add_utf8("Code".to_string()); // UTF8 - "Code"
-        let _system_class_index = self.constant_pool.add_utf8("java/lang/System".to_string()); // UTF8 - "java/lang/System"
-        let _out_field_index = self.constant_pool.add_utf8("out".to_string()); // UTF8 - "out"
-        let _err_field_index = self.constant_pool.add_utf8("err".to_string()); // UTF8 - "err"
-        let _print_stream_descriptor_index = self
-            .constant_pool
-            .add_utf8("Ljava/io/PrintStream;".to_string()); // UTF8 - "Ljava/io/PrintStream;"
-        let _print_stream_class_index = self
-            .constant_pool
-            .add_utf8("java/io/PrintStream".to_string()); // UTF8 - "java/io/PrintStream"
-        let _println_method_index = self.constant_pool.add_utf8("println".to_string()); // UTF8 - "println"
-        let _println_descriptor_index = self.constant_pool.add_utf8("(I)V".to_string()); // UTF8 - "(I)V"
-        let _math_class_index = self.constant_pool.add_utf8("java/lang/Math".to_string()); // UTF8 - "java/lang/Math"
-        let _random_method_index = self.constant_pool.add_utf8("random".to_string()); // UTF8 - "random"
+    fn setup_constant_pool(&mut self) -> Result<(), String> {
+        self.constant_pool.add_utf8(self.class_name.clone())?; // UTF8 - class name
+        self.constant_pool
+            .add_utf8("java/lang/Object".to_string())?; // UTF8 - "java/lang/Object"
+        self.constant_pool.add_utf8("main".to_string())?; // UTF8 - "main"
+        self.constant_pool
+            .add_utf8("([Ljava/lang/String;)V".to_string())?; // UTF8 - "([Ljava/lang/String;)V"
+        self.constant_pool.add_utf8("Code".to_string())?; // UTF8 - "Code"
+        self.constant_pool
+            .add_utf8("java/lang/System".to_string())?; // UTF8 - "java/lang/System"
+        self.constant_pool.add_utf8("out".to_string())?; // UTF8 - "out"
+        self.constant_pool.add_utf8("err".to_string())?; // UTF8 - "err"
+        self.constant_pool
+            .add_utf8("Ljava/io/PrintStream;".to_string())?; // UTF8 - "Ljava/io/PrintStream;"
+        self.constant_pool
+            .add_utf8("java/io/PrintStream".to_string())?; // UTF8 - "java/io/PrintStream"
+        self.constant_pool.add_utf8("println".to_string())?; // UTF8 - "println"
+        self.constant_pool.add_utf8("(I)V".to_string())?; // UTF8 - "(I)V"
+        self.constant_pool.add_utf8("java/lang/Math".to_string())?; // UTF8 - "java/lang/Math"
+        self.constant_pool.add_utf8("random".to_string())?; // UTF8 - "random"
         // 15: UTF8 - "()D"
-        self.constant_pool.add_utf8("()D".to_string());
+        self.constant_pool.add_utf8("()D".to_string())?;
         // 16: UTF8 - "Total: "
-        self.constant_pool.add_utf8("Total: ".to_string());
+        self.constant_pool.add_utf8("Total: ".to_string())?;
         // 17: UTF8 - "print"
-        self.constant_pool.add_utf8("print".to_string());
+        self.constant_pool.add_utf8("print".to_string())?;
         // 18: UTF8 - "(Ljava/lang/String;)V"
         self.constant_pool
-            .add_utf8("(Ljava/lang/String;)V".to_string());
+            .add_utf8("(Ljava/lang/String;)V".to_string())?;
 
         // Classes
         // 19: Class - this class
-        self.constant_pool.add_class(1);
+        self.constant_pool.add_class(1)?;
         // 20: Class - java/lang/Object
-        self.constant_pool.add_class(2);
+        self.constant_pool.add_class(2)?;
         // 21: Class - java/lang/System
-        self.constant_pool.add_class(6);
+        self.constant_pool.add_class(6)?;
         // 22: Class - java/io/PrintStream
-        self.constant_pool.add_class(10);
+        self.constant_pool.add_class(10)?;
         // 23: Class - java/lang/Math
-        self.constant_pool.add_class(13);
+        self.constant_pool.add_class(13)?;
 
         // String constants
         // 24: String - "Total: "
-        self.constant_pool.add_string(16);
+        self.constant_pool.add_string(16)?;
 
         // NameAndType
         // 25: NameAndType - main method
-        self.constant_pool.add_name_and_type(3, 4);
+        self.constant_pool.add_name_and_type(3, 4)?;
         // 26: NameAndType - out field
-        self.constant_pool.add_name_and_type(7, 9);
+        self.constant_pool.add_name_and_type(7, 9)?;
         // 27: NameAndType - err field
-        self.constant_pool.add_name_and_type(8, 9);
+        self.constant_pool.add_name_and_type(8, 9)?;
         // 28: NameAndType - println method
-        self.constant_pool.add_name_and_type(11, 12);
+        self.constant_pool.add_name_and_type(11, 12)?;
         // 29: NameAndType - print method
-        self.constant_pool.add_name_and_type(17, 18);
+        self.constant_pool.add_name_and_type(17, 18)?;
         // 30: NameAndType - random method
-        self.constant_pool.add_name_and_type(14, 15);
+        self.constant_pool.add_name_and_type(14, 15)?;
 
         // Field and method references
         // 31: Fieldref - System.out
-        self.constant_pool.add_fieldref(21, 26);
+        self.constant_pool.add_fieldref(21, 26)?;
         // 32: Fieldref - System.err
-        self.constant_pool.add_fieldref(21, 27);
+        self.constant_pool.add_fieldref(21, 27)?;
         // 33: Methodref - println
-        self.constant_pool.add_methodref(22, 28);
+        self.constant_pool.add_methodref(22, 28)?;
         // 34: Methodref - print
-        self.constant_pool.add_methodref(22, 29);
+        self.constant_pool.add_methodref(22, 29)?;
         // 35: Methodref - Math.random
-        self.constant_pool.add_methodref(23, 30);
+        self.constant_pool.add_methodref(23, 30)?;
+
+        Ok(())
     }
 
     /// Generate bytecode for Dice
@@ -503,7 +533,9 @@ pub fn generate_vm_instructions(
     expression: &str,
 ) -> Result<(Vec<JvmInstruction>, ConstantPool), Box<dyn std::error::Error>> {
     let mut generator = JavaClassGenerator::new("DiceRoll".to_string());
-    generator.setup_constant_pool();
+    generator
+        .setup_constant_pool()
+        .map_err(JavaClassGeneratorError::CompilationError)?;
     let instructions = generator.generate_dice_instructions(expression)?;
     Ok((instructions, generator.constant_pool.clone()))
 }
