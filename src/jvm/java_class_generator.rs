@@ -58,37 +58,20 @@ impl JavaClassGenerator {
 
     /// Setup constant pool
     fn setup_constant_pool(&mut self) {
-        // 1: UTF8 - class name
-        self.constant_pool.add_utf8(self.class_name.clone());
-        // 2: UTF8 - "java/lang/Object"
-        self.constant_pool.add_utf8("java/lang/Object".to_string());
-        // 3: UTF8 - "main"
-        self.constant_pool.add_utf8("main".to_string());
-        // 4: UTF8 - "([Ljava/lang/String;)V"
-        self.constant_pool
-            .add_utf8("([Ljava/lang/String;)V".to_string());
-        // 5: UTF8 - "Code"
-        self.constant_pool.add_utf8("Code".to_string());
-        // 6: UTF8 - "java/lang/System"
-        self.constant_pool.add_utf8("java/lang/System".to_string());
-        // 7: UTF8 - "out"
-        self.constant_pool.add_utf8("out".to_string());
-        // 8: UTF8 - "err"
-        self.constant_pool.add_utf8("err".to_string());
-        // 9: UTF8 - "Ljava/io/PrintStream;"
-        self.constant_pool
-            .add_utf8("Ljava/io/PrintStream;".to_string());
-        // 10: UTF8 - "java/io/PrintStream"
-        self.constant_pool
-            .add_utf8("java/io/PrintStream".to_string());
-        // 11: UTF8 - "println"
-        self.constant_pool.add_utf8("println".to_string());
-        // 12: UTF8 - "(I)V"
-        self.constant_pool.add_utf8("(I)V".to_string());
-        // 13: UTF8 - "java/lang/Math"
-        self.constant_pool.add_utf8("java/lang/Math".to_string());
-        // 14: UTF8 - "random"
-        self.constant_pool.add_utf8("random".to_string());
+        let class_name_index = self.constant_pool.add_utf8(self.class_name.clone()); // UTF8 - class name
+        let object_class_index = self.constant_pool.add_utf8("java/lang/Object".to_string()); // UTF8 - "java/lang/Object"
+        let main_method_index = self.constant_pool.add_utf8("main".to_string()); // UTF8 - "main"
+        let main_descriptor_index = self.constant_pool.add_utf8("([Ljava/lang/String;)V".to_string()); // UTF8 - "([Ljava/lang/String;)V"
+        let code_index = self.constant_pool.add_utf8("Code".to_string()); // UTF8 - "Code"
+        let system_class_index = self.constant_pool.add_utf8("java/lang/System".to_string()); // UTF8 - "java/lang/System"
+        let out_field_index = self.constant_pool.add_utf8("out".to_string()); // UTF8 - "out"
+        let err_field_index = self.constant_pool.add_utf8("err".to_string()); // UTF8 - "err"
+        let print_stream_descriptor_index = self.constant_pool.add_utf8("Ljava/io/PrintStream;".to_string()); // UTF8 - "Ljava/io/PrintStream;"
+        let print_stream_class_index = self.constant_pool.add_utf8("java/io/PrintStream".to_string()); // UTF8 - "java/io/PrintStream"
+        let println_method_index = self.constant_pool.add_utf8("println".to_string()); // UTF8 - "println"
+        let println_descriptor_index = self.constant_pool.add_utf8("(I)V".to_string()); // UTF8 - "(I)V"
+        let math_class_index = self.constant_pool.add_utf8("java/lang/Math".to_string()); // UTF8 - "java/lang/Math"
+        let random_method_index = self.constant_pool.add_utf8("random".to_string()); // UTF8 - "random"
         // 15: UTF8 - "()D"
         self.constant_pool.add_utf8("()D".to_string());
         // 16: UTF8 - "Total: "
