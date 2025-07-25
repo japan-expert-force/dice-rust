@@ -494,8 +494,13 @@ impl JavaClassGenerator {
                 JvmInstruction::Return => bytes.push(0xB1),
                 JvmInstruction::Ireturn => bytes.push(0xAC),
                 JvmInstruction::Nop => bytes.push(0x00),
-                _ => {
-                    // Other instructions not implemented for this use case
+                other_instruction => {
+                    // Log unimplemented instruction for debugging purposes
+                    // This helps identify which JVM instructions need to be implemented
+                    // when extending the compiler to support more complex expressions
+                    eprintln!(
+                        "Warning: JVM instruction not implemented in bytecode generation: {other_instruction:?}, falling back to NOP"
+                    );
                     // Use nop as fallback
                     bytes.push(0x00); // nop
                 }

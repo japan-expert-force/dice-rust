@@ -238,17 +238,49 @@ impl JvmCompatibleVm {
         &mut self,
         class_file_path: &str,
     ) -> Result<Option<JvmValue>, RuntimeError> {
+        // Automatically append .class extension if not present
+        let class_file_path = if class_file_path.ends_with(".class") {
+            class_file_path.to_string()
+        } else {
+            format!("{class_file_path}.class")
+        };
+
+        if self.verbose {
+            eprintln!("Reading class file: {class_file_path}");
+        }
+
         // Read the class file
-        let class_data = fs::read(class_file_path).map_err(|_| RuntimeError::InvalidStackState)?;
+        let class_data = fs::read(&class_file_path).map_err(|_| RuntimeError::InvalidStackState)?;
+
+        if self.verbose {
+            eprintln!("Class file size: {} bytes", class_data.len());
+        }
 
         // Parse the class file
         let class_file = ClassFileParser::parse(&class_data)?;
+
+        if self.verbose {
+            eprintln!("Parsed class file successfully");
+            eprintln!(
+                "Main method bytecode length: {}",
+                class_file.main_method_bytecode.len()
+            );
+            eprintln!(
+                "Constant pool size: {}",
+                class_file.constant_pool.entries().len()
+            );
+            eprintln!("Max locals: {}", class_file.max_locals);
+        }
 
         // Store the class file for method resolution
         let main_method_bytecode = class_file.main_method_bytecode.clone();
         let constant_pool = class_file.constant_pool.clone();
         let max_locals = class_file.max_locals;
         self.current_class = Some(class_file);
+
+        if self.verbose {
+            eprintln!("Starting main method execution");
+        }
 
         // Execute the main method
         self.execute_method(main_method_bytecode, constant_pool, max_locals)
