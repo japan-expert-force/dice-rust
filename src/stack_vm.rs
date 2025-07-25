@@ -108,8 +108,10 @@ impl Compiler {
                     bytecode.push(Instruction::Sub); // 19: count - 1
                     bytecode.push(Instruction::Stloc0); // 20: store new count
 
-                    // Jump back to loop start (PC 6)
-                    let br_back_offset = 6_isize - 21_isize; // From PC 21 back to PC 6
+                    // Jump back to loop start
+                    const LOOP_START_PC: isize = 6;
+                    const CURRENT_PC: isize = 21;
+                    let br_back_offset = LOOP_START_PC - CURRENT_PC; // From PC 21 back to PC 6
                     bytecode.push(Instruction::Br(br_back_offset)); // 21
 
                     // After loop: print total if original count > 1
