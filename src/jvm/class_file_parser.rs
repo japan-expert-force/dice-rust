@@ -526,7 +526,7 @@ fn parse_bytecode(bytecode: &[u8]) -> Result<Vec<JvmInstruction>, RuntimeError> 
                 instructions.push(JvmInstruction::Invokestatic(index));
                 i += 2;
             }
-            0x0B => instructions.push(JvmInstruction::Lconst0), // Need to add this
+            0x0B => instructions.push(JvmInstruction::Lconst0), // Pushes the long constant 0L onto the stack
             0x0E => instructions.push(JvmInstruction::Dconst0),
             0x0F => instructions.push(JvmInstruction::Dconst1),
             0xB7 => {
