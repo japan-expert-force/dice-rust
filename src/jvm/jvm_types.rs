@@ -5,6 +5,7 @@
 pub enum JvmInstruction {
     // 定数プール操作
     Ldc(u16),    // Load constant from pool
+    Ldc2W(u16),  // Load 2-word constant from pool (long/double)
     IconstM1,    // Load -1
     Iconst0,     // Load 0
     Iconst1,     // Load 1
@@ -12,6 +13,8 @@ pub enum JvmInstruction {
     Iconst3,     // Load 3
     Iconst4,     // Load 4
     Iconst5,     // Load 5
+    Lconst0,     // Load long 0
+    Lconst1,     // Load long 1
     Bipush(i8),  // Push byte value
     Sipush(i16), // Push short value
 
@@ -46,9 +49,59 @@ pub enum JvmInstruction {
     Ifle(u16), // Branch if int less or equal zero
     Goto(u16), // Unconditional branch
 
+    // ローカル変数操作
+    Iload(u8),  // Load int from local variable
+    Iload0,     // Load int from local variable 0
+    Iload1,     // Load int from local variable 1
+    Iload2,     // Load int from local variable 2
+    Iload3,     // Load int from local variable 3
+    Istore(u8), // Store int to local variable
+    Istore0,    // Store int to local variable 0
+    Istore1,    // Store int to local variable 1
+    Istore2,    // Store int to local variable 2
+    Istore3,    // Store int to local variable 3
+
+    Aload(u8),  // Load reference from local variable
+    Aload0,     // Load reference from local variable 0
+    Aload1,     // Load reference from local variable 1
+    Aload2,     // Load reference from local variable 2
+    Aload3,     // Load reference from local variable 3
+    Astore(u8), // Store reference to local variable
+    Astore0,    // Store reference to local variable 0
+    Astore1,    // Store reference to local variable 1
+    Astore2,    // Store reference to local variable 2
+    Astore3,    // Store reference to local variable 3
+
+    Dload(u8),  // Load double from local variable
+    Dload0,     // Load double from local variable 0
+    Dload1,     // Load double from local variable 1
+    Dload2,     // Load double from local variable 2
+    Dload3,     // Load double from local variable 3
+    Dstore(u8), // Store double to local variable
+    Dstore0,    // Store double to local variable 0
+    Dstore1,    // Store double to local variable 1
+    Dstore2,    // Store double to local variable 2
+    Dstore3,    // Store double to local variable 3
+
+    Lload(u8),  // Load long from local variable
+    Lload0,     // Load long from local variable 0
+    Lload1,     // Load long from local variable 1
+    Lload2,     // Load long from local variable 2
+    Lload3,     // Load long from local variable 3
+    Lstore(u8), // Store long to local variable
+    Lstore0,    // Store long to local variable 0
+    Lstore1,    // Store long to local variable 1
+    Lstore2,    // Store long to local variable 2
+    Lstore3,    // Store long to local variable 3
+
     // メソッド呼び出し
     Invokevirtual(u16), // Invoke virtual method
     Invokestatic(u16),  // Invoke static method
+    Invokespecial(u16), // Invoke special method (constructors, private methods)
+    Invokedynamic(u16), // Invoke dynamic method (for lambda and string concatenation)
+
+    // オブジェクト操作
+    New(u16), // Create new object
 
     // リターン
     Return,  // Return void
@@ -75,12 +128,19 @@ pub enum ConstantPoolEntry {
     Float(f32),
     Long(i64),
     Double(f64),
+    Placeholder, // Used for the second slot of 8-byte constants
 }
 
 /// 定数プール
 #[derive(Debug, Clone)]
 pub struct ConstantPool {
     entries: Vec<ConstantPoolEntry>,
+}
+
+impl Default for ConstantPool {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ConstantPool {
@@ -154,6 +214,12 @@ impl ConstantPool {
     pub fn add_double(&mut self, value: f64) -> u16 {
         let index = self.entries.len();
         self.entries.push(ConstantPoolEntry::Double(value));
+        index as u16 + 1
+    }
+
+    pub fn add_placeholder(&mut self) -> u16 {
+        let index = self.entries.len();
+        self.entries.push(ConstantPoolEntry::Placeholder);
         index as u16 + 1
     }
 

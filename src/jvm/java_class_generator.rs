@@ -354,6 +354,11 @@ impl JavaClassGenerator {
                     bytes.push(6); // CONSTANT_Double
                     bytes.extend_from_slice(&d.to_be_bytes());
                 }
+                ConstantPoolEntry::Placeholder => {
+                    // Placeholder entries for second slot of 8-byte constants
+                    // These should not be written to the actual class file
+                    // as they don't exist in the JVM spec
+                }
             }
         }
     }
@@ -465,12 +470,12 @@ pub fn generate_java_class(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut generator = JavaClassGenerator::new(class_name.to_string());
     let class_bytes = generator.generate_dice_class(expression)?;
-    let filename = format!("{}.class", class_name);
+    let filename = format!("{class_name}.class");
     fs::write(&filename, &class_bytes)?;
 
-    println!("Generated: {}", filename);
-    println!("Run with: java {}", class_name);
-    println!("View bytecode with: javap -c {}.class", class_name);
+    println!("Generated: {filename}");
+    println!("Run with: java {class_name}");
+    println!("View bytecode with: javap -c {class_name}.class");
 
     Ok(())
 }

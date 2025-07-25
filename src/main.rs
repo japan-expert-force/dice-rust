@@ -1,11 +1,15 @@
 use clap::{Parser, Subcommand};
 use dice_rust::{jvm, stack_vm::StackVm};
 
-fn generate_and_execute_jvm_bytecode(expression: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn generate_and_execute_jvm_bytecode(
+    expression: &str,
+    verbose: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
     // JVMクラス生成器から命令とプールを取得
     let (instructions, constant_pool) = jvm::generate_vm_instructions(expression)?;
 
     let mut vm = jvm::JvmCompatibleVm::new();
+    vm.set_verbose(verbose);
     vm.execute_method(instructions, constant_pool, 10)?;
 
     Ok(())
@@ -22,6 +26,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    #[command(about = "Run dice expressions using stack VM or JVM-compatible VM")]
     Run {
         #[arg(value_name = "EXPRESSION")]
         expression: String,
@@ -30,16 +35,24 @@ enum Commands {
             help = "Use JVM-compatible virtual machine instead of the default stack VM"
         )]
         jvm: bool,
+        #[arg(short, long, help = "Enable verbose output for debugging")]
+        verbose: bool,
     },
-    Java {
+    #[command(about = "Compile dice expressions to Java class files")]
+    Compile {
         #[arg(value_name = "EXPRESSION")]
         expression: String,
         #[arg(short, long, default_value = "DiceRoll")]
         output: String,
+        #[arg(short, long, help = "Enable verbose output for debugging")]
+        verbose: bool,
     },
+    #[command(about = "Execute compiled Java class files")]
     Execute {
         #[arg(value_name = "CLASS_FILE")]
         class_file: String,
+        #[arg(short, long, help = "Enable verbose output for debugging")]
+        verbose: bool,
     },
 }
 
@@ -47,10 +60,14 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Run { expression, jvm } => {
+        Commands::Run {
+            expression,
+            jvm,
+            verbose,
+        } => {
             if jvm {
                 // Generate bytecode and execute on JVM-compatible VM
-                match generate_and_execute_jvm_bytecode(&expression) {
+                match generate_and_execute_jvm_bytecode(&expression, verbose) {
                     Ok(()) => (),
                     Err(e) => eprintln!("JVM VM Error: {e}"),
                 }
@@ -62,13 +79,21 @@ fn main() {
                 }
             }
         }
-        Commands::Java { expression, output } => {
+        Commands::Compile {
+            expression,
+            output,
+            verbose: _,
+        } => {
             if let Err(e) = jvm::generate_java_class(&expression, &output) {
                 eprintln!("Java class generation error: {e}");
             }
         }
-        Commands::Execute { class_file } => {
+        Commands::Execute {
+            class_file,
+            verbose,
+        } => {
             let mut vm = jvm::JvmCompatibleVm::new();
+            vm.set_verbose(verbose);
             match vm.execute_class_file(&class_file) {
                 Ok(_) => (),
                 Err(e) => eprintln!("JVM execution error: {e:?}"),

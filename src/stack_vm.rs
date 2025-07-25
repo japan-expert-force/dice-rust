@@ -298,21 +298,21 @@ impl StackVm {
             // I/O operations
             Instruction::CallWriteLine => {
                 let value = self.stack.pop().ok_or(RuntimeError::InvalidStackState)?;
-                println!("{}", value);
+                println!("{value}");
             }
             Instruction::CallWrite => {
                 let value = self.stack.pop().ok_or(RuntimeError::InvalidStackState)?;
-                print!("{}", value);
+                print!("{value}");
             }
             Instruction::CallWriteStr(s) => {
-                print!("{}", s);
+                print!("{s}");
             }
             Instruction::CallWriteLineErr => {
                 let value = self.stack.pop().ok_or(RuntimeError::InvalidStackState)?;
-                eprintln!("{}", value);
+                eprintln!("{value}");
             }
             Instruction::CallWriteStrErr(s) => {
-                eprint!("{}", s);
+                eprint!("{s}");
             }
 
             // Random number generation
