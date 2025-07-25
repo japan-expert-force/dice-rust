@@ -136,17 +136,17 @@ impl JavaClassGenerator {
         &self,
         count: u32,
         faces: u32,
-    ) -> Result<Vec<JvmInstruction>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<JvmInstruction>, JavaClassGeneratorError> {
         let mut instructions = Vec::new();
 
         if count == 1 {
             // Single dice - don't display Total
             self.generate_single_dice(&mut instructions, faces)
-                .map_err(|e| Box::new(std::io::Error::other(e)) as Box<dyn std::error::Error>)?;
+                .map_err(JavaClassGeneratorError::from)?;
         } else {
             // Multiple dice - display each result and Total
             self.generate_multiple_dice(&mut instructions, count, faces)
-                .map_err(|e| Box::new(std::io::Error::other(e)) as Box<dyn std::error::Error>)?;
+                .map_err(JavaClassGeneratorError::from)?;
         }
 
         instructions.push(JvmInstruction::Return);
