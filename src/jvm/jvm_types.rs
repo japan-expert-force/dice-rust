@@ -154,24 +154,48 @@ impl ConstantPool {
 
     pub fn add_utf8(&mut self, value: String) -> u16 {
         let index = self.entries.len();
+        if index >= u16::MAX as usize {
+            panic!(
+                "Constant pool size exceeds the maximum limit of {}",
+                u16::MAX
+            );
+        }
         self.entries.push(ConstantPoolEntry::Utf8(value));
         index as u16 + 1
     }
 
     pub fn add_class(&mut self, name_index: u16) -> u16 {
         let index = self.entries.len();
+        if index >= u16::MAX as usize {
+            panic!(
+                "Constant pool size exceeds the maximum limit of {}",
+                u16::MAX
+            );
+        }
         self.entries.push(ConstantPoolEntry::Class(name_index));
         index as u16 + 1
     }
 
     pub fn add_string(&mut self, utf8_index: u16) -> u16 {
         let index = self.entries.len();
+        if index >= u16::MAX as usize {
+            panic!(
+                "Constant pool size exceeds the maximum limit of {}",
+                u16::MAX
+            );
+        }
         self.entries.push(ConstantPoolEntry::String(utf8_index));
         index as u16 + 1
     }
 
     pub fn add_fieldref(&mut self, class_index: u16, name_and_type_index: u16) -> u16 {
         let index = self.entries.len();
+        if index >= u16::MAX as usize {
+            panic!(
+                "Constant pool size exceeds the maximum limit of {}",
+                u16::MAX
+            );
+        }
         self.entries.push(ConstantPoolEntry::Fieldref(
             class_index,
             name_and_type_index,

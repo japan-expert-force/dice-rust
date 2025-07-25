@@ -256,7 +256,7 @@ impl StackVm {
                 let b = self.stack.pop().ok_or(RuntimeError::InvalidStackState)?;
                 let a = self.stack.pop().ok_or(RuntimeError::InvalidStackState)?;
                 if b == 0 {
-                    return Err(Box::new(RuntimeError::InvalidStackState));
+                    return Err(Box::new(RuntimeError::DivisionByZero));
                 }
                 self.stack.push(a % b);
             }

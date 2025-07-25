@@ -58,37 +58,26 @@ impl JavaClassGenerator {
 
     /// Setup constant pool
     fn setup_constant_pool(&mut self) {
-        // 1: UTF8 - class name
-        self.constant_pool.add_utf8(self.class_name.clone());
-        // 2: UTF8 - "java/lang/Object"
-        self.constant_pool.add_utf8("java/lang/Object".to_string());
-        // 3: UTF8 - "main"
-        self.constant_pool.add_utf8("main".to_string());
-        // 4: UTF8 - "([Ljava/lang/String;)V"
-        self.constant_pool
-            .add_utf8("([Ljava/lang/String;)V".to_string());
-        // 5: UTF8 - "Code"
-        self.constant_pool.add_utf8("Code".to_string());
-        // 6: UTF8 - "java/lang/System"
-        self.constant_pool.add_utf8("java/lang/System".to_string());
-        // 7: UTF8 - "out"
-        self.constant_pool.add_utf8("out".to_string());
-        // 8: UTF8 - "err"
-        self.constant_pool.add_utf8("err".to_string());
-        // 9: UTF8 - "Ljava/io/PrintStream;"
-        self.constant_pool
-            .add_utf8("Ljava/io/PrintStream;".to_string());
-        // 10: UTF8 - "java/io/PrintStream"
-        self.constant_pool
-            .add_utf8("java/io/PrintStream".to_string());
-        // 11: UTF8 - "println"
-        self.constant_pool.add_utf8("println".to_string());
-        // 12: UTF8 - "(I)V"
-        self.constant_pool.add_utf8("(I)V".to_string());
-        // 13: UTF8 - "java/lang/Math"
-        self.constant_pool.add_utf8("java/lang/Math".to_string());
-        // 14: UTF8 - "random"
-        self.constant_pool.add_utf8("random".to_string());
+        let _class_name_index = self.constant_pool.add_utf8(self.class_name.clone()); // UTF8 - class name
+        let _object_class_index = self.constant_pool.add_utf8("java/lang/Object".to_string()); // UTF8 - "java/lang/Object"
+        let _main_method_index = self.constant_pool.add_utf8("main".to_string()); // UTF8 - "main"
+        let _main_descriptor_index = self
+            .constant_pool
+            .add_utf8("([Ljava/lang/String;)V".to_string()); // UTF8 - "([Ljava/lang/String;)V"
+        let _code_index = self.constant_pool.add_utf8("Code".to_string()); // UTF8 - "Code"
+        let _system_class_index = self.constant_pool.add_utf8("java/lang/System".to_string()); // UTF8 - "java/lang/System"
+        let _out_field_index = self.constant_pool.add_utf8("out".to_string()); // UTF8 - "out"
+        let _err_field_index = self.constant_pool.add_utf8("err".to_string()); // UTF8 - "err"
+        let _print_stream_descriptor_index = self
+            .constant_pool
+            .add_utf8("Ljava/io/PrintStream;".to_string()); // UTF8 - "Ljava/io/PrintStream;"
+        let _print_stream_class_index = self
+            .constant_pool
+            .add_utf8("java/io/PrintStream".to_string()); // UTF8 - "java/io/PrintStream"
+        let _println_method_index = self.constant_pool.add_utf8("println".to_string()); // UTF8 - "println"
+        let _println_descriptor_index = self.constant_pool.add_utf8("(I)V".to_string()); // UTF8 - "(I)V"
+        let _math_class_index = self.constant_pool.add_utf8("java/lang/Math".to_string()); // UTF8 - "java/lang/Math"
+        let _random_method_index = self.constant_pool.add_utf8("random".to_string()); // UTF8 - "random"
         // 15: UTF8 - "()D"
         self.constant_pool.add_utf8("()D".to_string());
         // 16: UTF8 - "Total: "
@@ -152,10 +141,12 @@ impl JavaClassGenerator {
 
         if count == 1 {
             // Single dice - don't display Total
-            self.generate_single_dice(&mut instructions, faces);
+            self.generate_single_dice(&mut instructions, faces)
+                .map_err(|e| Box::new(std::io::Error::other(e)) as Box<dyn std::error::Error>)?;
         } else {
             // Multiple dice - display each result and Total
-            self.generate_multiple_dice(&mut instructions, count, faces);
+            self.generate_multiple_dice(&mut instructions, count, faces)
+                .map_err(|e| Box::new(std::io::Error::other(e)) as Box<dyn std::error::Error>)?;
         }
 
         instructions.push(JvmInstruction::Return);
@@ -163,10 +154,14 @@ impl JavaClassGenerator {
     }
 
     /// Generate bytecode for single dice
-    fn generate_single_dice(&self, instructions: &mut Vec<JvmInstruction>, faces: u32) {
+    fn generate_single_dice(
+        &self,
+        instructions: &mut Vec<JvmInstruction>,
+        faces: u32,
+    ) -> Result<(), String> {
         // Math.random() * faces + 1
         instructions.push(JvmInstruction::Invokestatic(35)); // Math.random()
-        self.push_double_constant(instructions, faces as f64);
+        self.push_double_constant(instructions, faces as f64)?;
         instructions.push(JvmInstruction::Dmul);
         instructions.push(JvmInstruction::Dconst1);
         instructions.push(JvmInstruction::Dadd);
@@ -176,6 +171,7 @@ impl JavaClassGenerator {
         instructions.push(JvmInstruction::Getstatic(31)); // System.out
         instructions.push(JvmInstruction::Swap);
         instructions.push(JvmInstruction::Invokevirtual(33)); // println(I)V
+        Ok(())
     }
 
     /// Generate bytecode for multiple dice
@@ -184,14 +180,14 @@ impl JavaClassGenerator {
         instructions: &mut Vec<JvmInstruction>,
         count: u32,
         faces: u32,
-    ) {
+    ) -> Result<(), String> {
         instructions.push(JvmInstruction::Iconst0); // total = 0
 
         // Roll each dice
         for _ in 0..count {
             // Math.random() * faces + 1
             instructions.push(JvmInstruction::Invokestatic(35)); // Math.random()
-            self.push_double_constant(instructions, faces as f64);
+            self.push_double_constant(instructions, faces as f64)?;
             instructions.push(JvmInstruction::Dmul);
             instructions.push(JvmInstruction::Dconst1);
             instructions.push(JvmInstruction::Dadd);
@@ -220,10 +216,15 @@ impl JavaClassGenerator {
         instructions.push(JvmInstruction::Swap);
         instructions.push(JvmInstruction::Invokevirtual(33)); // println(I)V
         instructions.push(JvmInstruction::Pop); // Remove remaining value from stack
+        Ok(())
     }
 
     /// Push double constant to stack
-    fn push_double_constant(&self, instructions: &mut Vec<JvmInstruction>, value: f64) {
+    fn push_double_constant(
+        &self,
+        instructions: &mut Vec<JvmInstruction>,
+        value: f64,
+    ) -> Result<(), String> {
         if value == 0.0 {
             instructions.push(JvmInstruction::Dconst0);
         } else if value == 1.0 {
@@ -231,13 +232,18 @@ impl JavaClassGenerator {
         } else {
             // For more complex constants, use integer conversion
             let int_val = value as i32;
-            self.push_int_constant(instructions, int_val);
+            self.push_int_constant(instructions, int_val)?;
             instructions.push(JvmInstruction::I2d);
         }
+        Ok(())
     }
 
     /// Push int constant to stack
-    fn push_int_constant(&self, instructions: &mut Vec<JvmInstruction>, value: i32) {
+    fn push_int_constant(
+        &self,
+        instructions: &mut Vec<JvmInstruction>,
+        value: i32,
+    ) -> Result<(), String> {
         match value {
             -1 => instructions.push(JvmInstruction::IconstM1),
             0 => instructions.push(JvmInstruction::Iconst0),
@@ -254,9 +260,12 @@ impl JavaClassGenerator {
             }
             _ => {
                 // Handle unsupported values explicitly
-                panic!("Value {value} is outside the supported range for Sipush (-32768 to 32767)");
+                return Err(format!(
+                    "Value {value} is outside the supported range for Sipush (-32768 to 32767)"
+                ));
             }
         }
+        Ok(())
     }
 
     /// Generate Java class file
