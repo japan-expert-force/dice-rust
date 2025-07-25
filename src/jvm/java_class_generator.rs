@@ -253,8 +253,8 @@ impl JavaClassGenerator {
                 instructions.push(JvmInstruction::Sipush(value as i16));
             }
             _ => {
-                // Simplify large values
-                instructions.push(JvmInstruction::Sipush((value % 32767) as i16));
+                // Handle unsupported values explicitly
+                panic!("Value {} is outside the supported range for Sipush (-32768 to 32767)", value);
             }
         }
     }
