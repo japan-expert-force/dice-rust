@@ -15,6 +15,7 @@ Dice Rust is a comprehensive parser and execution environment for dice notation,
   - **Stack VM**: Native Rust stack-based virtual machine
   - **JVM-Compatible VM**: JVM bytecode-compatible execution engine
   - **Java Class Generation**: Generate executable Java .class files
+- **Limited JVM Support**: Execute simple Java .class files (basic operations only)
 - **Error Handling**: Comprehensive error reporting with position information
 - **Type Safety**: Built with Rust's type system for reliability
 - **Cross-Platform**: Support for multiple execution environments
@@ -51,10 +52,7 @@ The tool provides three execution modes:
 #### 1. Stack VM Execution (Default)
 
 ```bash
-# Run with default expression (2d100)
-cargo run -- run
-
-# Run with custom expression
+# Run with custom expression using stack VM
 cargo run -- run "3d6"
 cargo run -- run "1d20"
 ```
@@ -64,46 +62,77 @@ cargo run -- run "1d20"
 ```bash
 # Execute using JVM-compatible virtual machine
 cargo run -- run --jvm "2d6"
-cargo run -- run --jvm "3d20"
+cargo run -- run --jvm "3d20" --verbose
 ```
 
-#### 3. Java Class Generation
+#### 3. Java Class Generation and Execution
 
 ```bash
 # Generate Java class file
-cargo run -- java "2d6"
-cargo run -- java "3d20" --output MyDiceClass
+cargo run -- compile "2d6"
+cargo run -- compile "3d20" --output MyDiceClass
 
-# Run the generated Java class
-java DiceRoll  # or java MyDiceClass
+# Execute using built-in JVM-compatible VM
+cargo run -- execute DiceRoll.class
+cargo run -- execute MyDiceClass.class --verbose
+
+# Execute using system Java (requires Java runtime)
+java DiceRoll
+java MyDiceClass
+
+# Execute simple Java/Kotlin class files
+javac Main.java && cargo run -- execute Main.class
+kotlinc Main.kt && cargo run -- execute MainKt.class
 ```
 
 ### Examples
 
 ```bash
 # Stack VM execution
-$ cargo run -- run "2d6"
-5
-2
-Total: 7
+$ cargo run -q -- run "2D100"
+74
+94
+Total: 168
 
 # JVM-compatible VM execution
-$ cargo run -- run --jvm "2d6"
-4
-3
-Total: 7
+$ cargo run -q -- run "2D100" --jvm
+54
+78
+Total: 132
 
-# Java class generation
-$ cargo run -- java "3d6" --output GameDice
-Generated: GameDice.class
-Run with: java GameDice
-View bytecode with: javap -c GameDice.class
+# Java class generation and built-in JVM execution
+$ cargo run -q -- compile "2D100" && cargo run -q -- execute DiceRoll.class
+Generated: DiceRoll.class
+Run with: java DiceRoll
+View bytecode with: javap -c DiceRoll.class
+84
+22
+Total: 106
 
-$ java GameDice
-2
-5
+# Java class generation and system Java execution
+$ cargo run -q -- compile "2D100" && java DiceRoll
+Generated: DiceRoll.class
+Run with: java DiceRoll
+View bytecode with: javap -c DiceRoll.class
+22
 1
-Total: 8
+Total: 23
+
+# Standard Java class execution
+$ javac Main.java && java Main
+Hello, world!
+
+# Built-in JVM execution of Java classes
+$ javac Main.java && cargo run -q -- execute Main.class
+Hello, world!
+
+# Standard Kotlin class execution
+$ kotlinc Main.kt && kotlin MainKt
+Hello, world!
+
+# Built-in JVM execution of Kotlin classes
+$ kotlinc Main.kt && cargo run -q -- execute MainKt.class
+Hello, world!
 ```
 
 ## Project Structure
@@ -113,14 +142,21 @@ src/
 ├── analyzer.rs          # Semantic analysis
 ├── ast.rs              # Abstract Syntax Tree definitions
 ├── error.rs            # Error types and handling
-├── java_generator.rs   # Java class file generation
-├── jvm_bytecode.rs     # JVM bytecode definitions and compilation
-├── jvm_compatible_vm.rs # JVM-compatible virtual machine
 ├── lexer.rs            # Lexical analysis
 ├── lib.rs              # Library interface
 ├── main.rs             # CLI interface
 ├── parser.rs           # Syntax analysis
-└── stack_vm.rs         # Native stack-based virtual machine
+├── stack_vm.rs         # Native stack-based virtual machine
+└── jvm/                # JVM-related modules
+    ├── mod.rs              # JVM module exports
+    ├── class_file_parser.rs    # Java class file parser
+    ├── java_class_generator.rs # Java class file generation
+    ├── jvm_compatible_vm.rs    # JVM-compatible virtual machine
+    └── jvm_types.rs            # JVM type definitions
+ci/                     # CI tooling
+├── Cargo.toml          # CI tool configuration
+└── src/
+    └── main.rs         # CI task runner
 ```
 
 ````
@@ -140,7 +176,7 @@ src/
    - Method frames and call stack management
    - Support for JVM instruction set
 
-3. **Java Class Generator** (`java_generator.rs`): Bytecode compilation
+3. **Java Class Generator** (`jvm/java_class_generator.rs`): Bytecode compilation
    - Generates standard Java .class files
    - Compatible with any JVM implementation
    - Produces optimized bytecode
@@ -160,12 +196,16 @@ src/
    - `Statement`: Expression statements
    - `Expression`: Dice expressions with count and faces
 
-4. **JVM Bytecode** (`jvm_bytecode.rs`): JVM instruction definitions
+4. **JVM Types** (`jvm/jvm_types.rs`): JVM instruction definitions
    - Complete JVM instruction set implementation
    - Constant pool management
    - Bytecode generation and optimization
 
-4. **Error Handling** (`error.rs`): Comprehensive error types
+5. **Class File Parser** (`jvm/class_file_parser.rs`): Java class file parsing
+   - Reads and parses .class files
+   - Supports JVM-compatible execution
+
+6. **Error Handling** (`error.rs`): Comprehensive error types
    - Position-aware error reporting
    - Detailed error messages for debugging
 
@@ -185,6 +225,19 @@ src/
 1. Parse dice expression into AST
 2. Generate complete Java class with main method
 3. Output .class file compatible with standard JVM
+4. Execute using built-in JVM-compatible VM
+
+### CI Tool
+
+The project includes a custom CI tool in the `ci/` directory that automates quality assurance tasks:
+
+- **Formatting**: `cargo fmt`
+- **Type checking**: `cargo check`
+- **Testing**: `cargo test`
+- **Linting**: `cargo clippy`
+- **Building**: `cargo build --release`
+- **Security audit**: `cargo audit`
+- **Documentation**: `cargo doc`
 
 ### Example AST Output
 
@@ -244,15 +297,13 @@ cargo fmt
 cargo clippy
 ```
 
-## Contributing
+### Workspace Structure
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+This project uses a Cargo workspace with two members:
+
+- **Main project** (`.`): The dice-rust library and CLI tool
+- **CI tool** (`ci/`): Custom CI automation tool
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Inspired by standard tabletop RPG dice notation
-- Built with Rust's powerful parsing capabilities
