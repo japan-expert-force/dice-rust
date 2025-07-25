@@ -5,7 +5,7 @@ fn generate_and_execute_jvm_bytecode(
     expression: &str,
     verbose: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // JVMクラス生成器から命令とプールを取得
+    // Get instructions and constant pool from the JVM class generator
     let (instructions, constant_pool) = jvm::generate_vm_instructions(expression)?;
 
     let mut vm = jvm::JvmCompatibleVm::new();

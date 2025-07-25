@@ -280,7 +280,7 @@ fn parse_bytecode(bytecode: &[u8]) -> Result<Vec<JvmInstruction>, RuntimeError> 
         match opcode {
             0x00 => {
                 // nop - do nothing
-                instructions.push(JvmInstruction::Pop); // Placeholder for now
+                instructions.push(JvmInstruction::Nop);
             }
             0x02 => instructions.push(JvmInstruction::IconstM1),
             0x03 => instructions.push(JvmInstruction::Iconst0),
@@ -339,7 +339,7 @@ fn parse_bytecode(bytecode: &[u8]) -> Result<Vec<JvmInstruction>, RuntimeError> 
             0x1C => instructions.push(JvmInstruction::Iload2),
             0x1D => instructions.push(JvmInstruction::Iload3),
 
-            // 参照型ローカル変数操作
+            // Reference type local variable operations
             0x19 => {
                 // aload
                 if i >= bytecode.len() {
@@ -395,13 +395,13 @@ fn parse_bytecode(bytecode: &[u8]) -> Result<Vec<JvmInstruction>, RuntimeError> 
             0x87 => instructions.push(JvmInstruction::I2d),
             0x8E => instructions.push(JvmInstruction::D2i),
 
-            // ローカル変数操作 - long
+            // Local variable operations - long
             0x1E => instructions.push(JvmInstruction::Lload0),
             0x1F => instructions.push(JvmInstruction::Lload1),
             0x20 => instructions.push(JvmInstruction::Lload2),
             0x21 => instructions.push(JvmInstruction::Lload3),
 
-            // ローカル変数操作 - double
+            // Local variable operations - double
             0x18 => {
                 // dload
                 if i >= bytecode.len() {
